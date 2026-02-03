@@ -1,11 +1,12 @@
 import client from './client';
 
 export const joinRequestsAPI = {
-  submitJoinRequest: async (rideId, seatsRequested, message) => {
+  submitJoinRequest: async (rideId, startLocation, endLocation, routePolyline) => {
     const response = await client.post('/join-requests', {
       rideId,
-      seatsRequested,
-      message,
+      startLocation,
+      endLocation,
+      routePolyline,
     });
     return response.data;
   },
@@ -15,15 +16,23 @@ export const joinRequestsAPI = {
     return response.data;
   },
 
-  acceptJoinRequest: async (requestId, seatsBooked) => {
-    const response = await client.patch(`/join-requests/${requestId}/accept`, {
-      seatsBooked,
-    });
+  getMyRequests: async () => {
+    const response = await client.get('/join-requests/my-requests');
+    return response.data;
+  },
+
+  acceptJoinRequest: async (requestId) => {
+    const response = await client.patch(`/join-requests/${requestId}/accept`);
     return response.data;
   },
 
   rejectJoinRequest: async (requestId) => {
     const response = await client.patch(`/join-requests/${requestId}/reject`);
+    return response.data;
+  },
+
+  cancelJoinRequest: async (requestId) => {
+    const response = await client.patch(`/join-requests/${requestId}/cancel`);
     return response.data;
   },
 };

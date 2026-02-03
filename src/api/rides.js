@@ -83,6 +83,26 @@ export const ridesAPI = {
   },
 
   /**
+   * Get rides I joined (as passenger)
+   */
+  getJoinedRides: async (filters = {}) => {
+    try {
+      const params = {
+        page: filters.page || 1,
+        limit: filters.limit || 10,
+      };
+
+      const response = await withRetry(() =>
+        client.get('/rides/passenger/my-rides', { params })
+      );
+      return response.data;
+    } catch (error) {
+      const message = handleApiError(error, 'Failed to fetch joined rides');
+      throw new Error(message);
+    }
+  },
+
+  /**
    * Get specific ride details
    */
   getRideDetails: async (rideId) => {

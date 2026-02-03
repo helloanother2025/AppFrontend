@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { StyledText as Text } from './StyledText';
 import { StyledCard as Card } from './StyledCard';
 import { StyledBorderText as BorderText } from './StyledBorderText';
@@ -12,24 +12,54 @@ import Octicons from '@expo/vector-icons/Octicons';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import users from '../data/userData.json';
+import { joinRequestsAPI } from '../src/api/joinRequests';
+import { useSearch } from '../context/SearchContext';
 
 export default function RideDetailsCard({ ride, ongoing = false, join = false }) {
   const router = useRouter();
+  const { searchData } = useSearch();
   const [showPassengers, setShowPassengers] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [isRequested, setIsRequested] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [requesting, setRequesting] = useState(false);
 
   if (!ride) return <Text>No ride data provided.</Text>;
 
   
   const findUserByHandle = (handle) => users.find(u => u.handle === handle);
 
-  const creator = findUserByHandle(ride.creator.handle);
+  const creator = findUserByHandle(ride.creator?.handle) || ride.creator || { name: 'Unknown', handle: '@user' };
 
-  const handleRequest = () => {
-    router.push('/joinRequested')
-    setIsRequested(true);
+  const handleRequest = async () => {
+    if (!ride?.id) {
+      Alert.alert('Error', 'Ride information missing');
+      return;
+    }
+
+    setRequesting(true);
+    try {
+      await joinRequestsAPI.submitJoinRequest(
+        ride.id,
+        searchData.start?.coords ? {
+          name: searchData.start.name,
+          latitude: searchData.start.coords.lat,
+          longitude: searchData.start.coords.lng,
+        } : null,
+        searchData.destination?.coords ? {
+          name: searchData.destination.name,
+          latitude: searchData.destination.coords.lat,
+          longitude: searchData.destination.coords.lng,
+        } : null,
+        searchData.routePolyline || null
+      );
+      setIsRequested(true);
+      router.push('/joinRequested');
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to submit join request');
+    } finally {
+      setRequesting(false);
+    }
   };
 
   const handleComplete = () => {
@@ -41,10 +71,10 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
     <Card>
       {join && (
         <Button
-          title={isRequested ? "Request sent" : "Request to join"}
-          style={[{ marginBottom: 20 }, isRequested && { backgroundColor: '#ababab' }]}
+          title={requesting ? "Sending..." : (isRequested ? "Request sent" : "Request to join")}
+          style={[{ marginBottom: 20 }, (isRequested || requesting) && { backgroundColor: '#ababab' }]}
           onPress={handleRequest}
-          disabled={isRequested}
+          disabled={isRequested || requesting}
         />
       )}
       
@@ -83,7 +113,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
       <View style={styles.creatorContainer}>
         <TouchableOpacity
           style={styles.creatorRow}
-          onPress={() => router.push(`user/${creator.handle}`)}
+          onPress={() => creator?.handle && router.push(`user/${creator.handle}`)}
         >
           <Text style={{ fontSize: 30 }}>👤 </Text>
           <View>
@@ -112,16 +142,16 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
 
       {showPassengers && (
         <View>
-          {ride.partners.length === 0 ? (
+          {(ride.partners || []).length === 0 ? (
             <Text style={[styles.handle, styles.rideRow]}>No other passengers.</Text>
           ) : (
-            ride.partners.map((partnerData, index) => {
-              const partner = findUserByHandle(partnerData.handle);
+            (ride.partners || []).map((partnerData, index) => {
+              const partner = findUserByHandle(partnerData.handle) || partnerData || { name: 'Unknown', handle: '@user' };
               return (
                 <View key={index} style={styles.creatorContainer}>
                   <TouchableOpacity
                     style={styles.creatorRow}
-                    onPress={() => router.push(`/user/${partner.handle}`)}
+                    onPress={() => partner?.handle && router.push(`/user/${partner.handle}`)}
                   >
                     <Text style={{ fontSize: 30 }}>👤 </Text>
                     <View>
@@ -146,7 +176,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
             <Text style={styles.rideText}>Total passengers:</Text>
           </View>
           <View style={styles.rideColumn}>
-            <Text style={styles.rideText}>{ride.partners.length} / {ride.totalPassengers}</Text>
+            <Text style={styles.rideText}>{(ride.partners || []).length} / {ride.totalPassengers}</Text>
           </View>
         </View>
 
@@ -202,7 +232,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
             </View>
           </View>
 
-          {ride.partners.map((partner, index) => (
+          {(ride.partners || []).map((partner, index) => (
             <View key={index} style={{ flexDirection: 'row' }}>
               <View style={styles.rideColumn}>
                 <Text style={styles.rideText}>{partner.name}</Text>

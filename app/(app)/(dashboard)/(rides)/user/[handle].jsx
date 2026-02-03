@@ -7,25 +7,56 @@ import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import users from '../../../../../data/userData.json'
 import rides from '../../../../../data/rideData.json'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import { useRide } from '../../../../../context/RideContext'
+import { useUser } from '../../../../../context/UserContext'
 
 const UserDetails = () => {
   const { handle } = useLocalSearchParams();
-  const user = users.find(u => u.handle === handle);
+  const { rides: availableRides } = useRide();
+  const { fetchUserProfile } = useUser();
+  const [user, setUser] = useState(null);
 
-  const createdRides = rides.filter(r => r.creator.handle === user.handle);
+  const targetHandle = Array.isArray(handle) ? handle[0] : handle;
+  const fallbackUser = users.find(u => u.handle === targetHandle);
 
-  const joinedRides = rides.filter(r => r.partners.some(p => p.handle === user.handle));
+  const createdRides = (availableRides.length ? availableRides : rides).filter(r => r.creator.handle === (user?.handle || fallbackUser?.handle));
+
+  const joinedRides = (availableRides.length ? availableRides : rides).filter(r => r.partners.some(p => p.handle === (user?.handle || fallbackUser?.handle)));
 
   const router = useRouter();
   
-  if (!user) {
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const profile = await fetchUserProfile(targetHandle);
+        if (isMounted) {
+          setUser({
+            ...profile,
+            handle: profile?.username ? `@${profile.username}` : profile?.handle,
+          });
+        }
+      } catch (error) {
+        if (isMounted) {
+          setUser(fallbackUser || null);
+        }
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [fetchUserProfile, targetHandle, fallbackUser]);
+
+  if (!user && !fallbackUser) {
     return (
       <View style={styles.centered}>
         <Text style={styles.errorText}>User not found</Text>
       </View>
     );
   }
+
+  const profile = user || fallbackUser;
 
   return (
     <ScrollView>
@@ -41,9 +72,9 @@ const UserDetails = () => {
       <Card>
         <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start'}}>
           <View style={{width: '80%'}}>
-            <Text style={styles.name}>{user.name}</Text>
-            <Text style={styles.handle}>{user.handle}</Text>
-            <Text style={styles.bio}>{user.bio || "Hello, fellow ride sharer!"}</Text>
+            <Text style={styles.name}>{profile.name}</Text>
+            <Text style={styles.handle}>{profile.handle || (profile.username ? `@${profile.username}` : '')}</Text>
+            <Text style={styles.bio}>{profile.bio || "Hello, fellow ride sharer!"}</Text>
           </View>
         </View>
 
@@ -60,7 +91,7 @@ const UserDetails = () => {
           </View>
           
           <View style={{alignItems: 'center'}}>
-            <Text style={styles.statValue}>{user.rating}</Text>
+            <Text style={styles.statValue}>{profile.rating ?? profile.avg_rating ?? '-'}</Text>
             <Text style={{fontSize: 11}}>Overall Rating</Text>
           </View>
         </View>
@@ -68,11 +99,11 @@ const UserDetails = () => {
         {/* contact info */}
         <View>
           <Text style={styles.sectionTitle}>Contact</Text>
-          <StyledLink type='facebook' text={user.name} value={user.fb}></StyledLink>
+          <StyledLink type='facebook' text={profile.name} value={profile.fb}></StyledLink>
           
-          <StyledLink type='phone' text={user.phone} value={user.phone}></StyledLink>
+          <StyledLink type='phone' text={profile.phone} value={profile.phone}></StyledLink>
           
-          <StyledLink type='email' text={user.email} value={user.email} ></StyledLink>
+          <StyledLink type='email' text={profile.email} value={profile.email} ></StyledLink>
         </View> 
       </Card>
     </ScrollView>

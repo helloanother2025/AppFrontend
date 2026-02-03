@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { View, StyleSheet } from 'react-native'
 import { StyledFauxSearch as Search} from '../../../components/StyledFauxSearch' 
 import { StyledTitle as Title } from '../../../components/StyledTitle'
@@ -13,12 +13,18 @@ import rides from '../../../data/rideData.json'
 import user from '../../../data/userData.json'
 import { useRouter } from 'expo-router'
 import { useRide } from '../../../context/RideContext';
+import { useUser } from '../../../context/UserContext';
 
 export default function CreateRide() {
   const router = useRouter();
-  const {setRideData} = useRide();
+  const { setRideData, myRides, fetchMyRides } = useRide();
+  const { currentUser } = useUser();
 
-  const recentRides = [rides[0], rides[1], rides[2]];
+  const recentRides = (myRides && myRides.length ? myRides : rides).slice(0, 3);
+
+  useEffect(() => {
+    fetchMyRides();
+  }, [fetchMyRides]);
 
   return (
     <ScrollView>
@@ -29,7 +35,10 @@ export default function CreateRide() {
           title="Where to today?"
           onPress={() => {
             setRideData({
-              creator: {name: user[0].name, handle: user[0].handle},
+              creator: {
+                name: currentUser?.name || user[0].name,
+                handle: currentUser?.username ? `@${currentUser.username}` : user[0].handle,
+              },
               start: { name: '', coords: null },
               destination: { name: '', coords: null },
               transport: '',

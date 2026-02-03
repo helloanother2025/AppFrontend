@@ -1,30 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native'
+import { View, StyleSheet, Alert } from 'react-native'
 import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView'
 import { StyledText as Text } from '../../../components/StyledText'
 import { StyledTitle as Title } from '../../../components/StyledTitle' 
 import { StyledCardButton as CardButton } from '../../../components/StyledCardButton'
 import { StyledButton as Button } from '../../../components/StyledButton'
 import rides from '../../../data/rideData.json'
-import { useRouter } from 'expo-router'; 
-
-const GOOGLE_MAPS_APIKEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+import { useRouter } from 'expo-router';
+import { getDistance } from '../../../src/utils/mapServices'
+import { useRide } from '../../../context/RideContext'
 
 export default function FareCalculation() {
-  const currentRide = rides[0];
+  const { selectedRide, myRides, rides: availableRides, completeRide, loading } = useRide();
+  const currentRide = selectedRide || myRides[0] || availableRides[0] || rides[0];
   const router = useRouter();
   const [fareBreakdown, setFareBreakdown] = useState([]);
+  const [completing, setCompleting] = useState(false);
 
   const getDistances = async () => {
+    if (!currentRide?.start?.coords || !currentRide?.destination?.coords) {
+      return;
+    }
+
     const rideStart = currentRide.start.coords;
     const rideEnd   = currentRide.destination.coords;
-    const totalFare = parseFloat(currentRide.fare);
-  
-    const totalRideUrl = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${rideStart.lat},${rideStart.lng}&destinations=${rideEnd.lat},${rideEnd.lng}&key=${GOOGLE_MAPS_APIKEY}`;
-    
-    const totalRideResponse = await fetch(totalRideUrl);
-    const totalRideData = await totalRideResponse.json();
-    const totalDistanceKm = totalRideData.rows[0].elements[0].distance.value / 1000; // in km
+    const totalFare = parseFloat(currentRide.fare || 0);
+
+    const totalDistanceData = await getDistance(
+      { latitude: rideStart.lat, longitude: rideStart.lng },
+      { latitude: rideEnd.lat, longitude: rideEnd.lng }
+    );
+
+    const totalDistanceKm = totalDistanceData?.distance ?? 0;
   
     const participants = [];
   
@@ -34,15 +41,19 @@ export default function FareCalculation() {
       distance: totalDistanceKm,
     });
   
-    for (const partner of currentRide.partners) {
+    const partners = currentRide.partners || [];
+    for (const partner of partners) {
+      if (!partner.start?.coords || !partner.destination?.coords) {
+        continue;
+      }
       const start = partner.start.coords;
       const end = partner.destination.coords;
   
-      const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${start.lat},${start.lng}&destinations=${end.lat},${end.lng}&key=${GOOGLE_MAPS_APIKEY}`;
-      
-      const res = await fetch(url);
-      const data = await res.json();
-      const userDistanceKm = data.rows[0].elements[0].distance.value / 1000;
+      const distanceData = await getDistance(
+        { latitude: start.lat, longitude: start.lng },
+        { latitude: end.lat, longitude: end.lng }
+      );
+      const userDistanceKm = distanceData?.distance ?? 0;
   
       participants.push({
         name: partner.name,
@@ -63,9 +74,39 @@ export default function FareCalculation() {
     setFareBreakdown(breakdown);
   };
 
+  const handleCompleteRide = async () => {
+    if (!currentRide?.id) {
+      Alert.alert('Error', 'No ride selected');
+      return;
+    }
+
+    setCompleting(true);
+    try {
+      await completeRide(currentRide.id, {
+        actualFare: parseFloat(currentRide.fare || 0),
+        completionTime: new Date().toISOString(),
+      });
+      Alert.alert('Success', 'Ride completed successfully!');
+      router.push('/dash');
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to complete ride');
+    } finally {
+      setCompleting(false);
+    }
+  };
+
   useEffect(() => {
     getDistances();
-  }, []);
+  }, [currentRide]);
+
+  if (!currentRide) {
+    return (
+      <ScrollView>
+        <Title>Ride participants</Title>
+        <Text>No ride data available.</Text>
+      </ScrollView>
+    );
+  }
 
   return (
     <ScrollView>
@@ -84,7 +125,7 @@ export default function FareCalculation() {
             <Text style={styles.participantRole}>Creator</Text>
           </View>
           
-          {currentRide.partners.map((partner, index) => (
+          {(currentRide.partners || []).map((partner, index) => (
             <View key={index} style={styles.participantRow}>
               <View style={styles.creatorRow}>
                 <Text style={{ fontSize: 30 }}>👤 </Text>
@@ -99,8 +140,6 @@ export default function FareCalculation() {
         </View>
       </CardButton>
 
-      <Title style={{marginTop: 10}}>Fare breakdown</Title>
-      
       <CardButton>
         <View style={{width: '100%'}}>
           <View style={styles.fareRow}>
@@ -119,12 +158,11 @@ export default function FareCalculation() {
       </CardButton>
 
       <Button
-        title='Finish'
-        onPress={() =>
-          router.push('/dash')
-      }
-      style={{marginTop: 20, width: '100%'}}>
-      </Button>
+        title={completing ? 'Completing...' : 'Finish'}
+        onPress={handleCompleteRide}
+        disabled={completing || loading}
+        style={{marginTop: 20, width: '100%'}}
+      />
     </ScrollView>
   )
 }

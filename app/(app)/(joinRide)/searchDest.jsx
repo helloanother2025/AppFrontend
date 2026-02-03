@@ -6,38 +6,7 @@ import { StyledButton as Button } from '../../../components/StyledButton'
 import MapSearchWrapper from '../../../components/MapSearchWrapper'
 import { useRouter } from 'expo-router'
 import { useSearch } from '../../../context/SearchContext'
-
-const GOOGLE_MAPS_APIKEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-const decodePolyline = (t) => {
-  let points = [];
-  let index = 0, lat = 0, lng = 0;
-
-  while (index < t.length) {
-    let b, shift = 0, result = 0;
-    do {
-      b = t.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-    const dlat = (result & 1) ? ~(result >> 1) : (result >> 1);
-    lat += dlat;
-
-    shift = 0;
-    result = 0;
-    do {
-      b = t.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-    const dlng = (result & 1) ? ~(result >> 1) : (result >> 1);
-    lng += dlng;
-
-    points.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
-  }
-
-  return points;
-};
+import { getDirections } from '../../../src/utils/mapServices'
 
 export default function SearchDest() {
   const router = useRouter()
@@ -46,16 +15,8 @@ export default function SearchDest() {
 
   const fetchDirections = async (start, destination) => {
     try {
-      const response = await fetch(
-        `https://maps.googleapis.com/maps/api/directions/json?origin=${start.latitude},${start.longitude}&destination=${destination.latitude},${destination.longitude}&mode=driving&key=${GOOGLE_MAPS_APIKEY}`
-      );
-      const json = await response.json();
-
-      if (json.routes.length) {
-        const encoded = json.routes[0].overview_polyline.points;
-        return encoded;
-      }
-      return null;
+      const directions = await getDirections(start, destination);
+      return directions?.polyline ?? null;
     } catch (error) {
       console.error('Error fetching directions:', error);
       return null;

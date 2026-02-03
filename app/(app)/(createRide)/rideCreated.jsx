@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StyledText as Text } from '../../../components/StyledText';
@@ -10,16 +10,89 @@ import RouteMap from '../../../components/RouteMap';
 
 
 export default function RideCreated() {
-  const { rideData } = useRide();
+  const { rideData, createRide } = useRide();
   const router = useRouter();
+  const [createdRide, setCreatedRide] = useState(null);
+  const [creationError, setCreationError] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const submitRide = async () => {
+      if (!rideData?.start?.coords || !rideData?.destination?.coords) {
+        return;
+      }
+
+      if (!rideData.transport || !rideData.totalPassengers) {
+        setCreationError('Missing ride details. Please go back and complete all steps.');
+        return;
+      }
+
+      try {
+        const startTime = new Date().toISOString();
+        
+        // Map transport modes to database enum values
+        const transportMap = {
+          'Uber': 'Car',
+          'Pathao': 'Bike',
+          'Car': 'Car',
+          'CNG': 'CNG',
+          'Bus': 'Bus',
+          'Bike': 'Bike'
+        };
+        
+        const payload = {
+          startLocation: {
+            name: rideData.start.name,
+            address: rideData.start.name,
+            latitude: rideData.start.coords.lat,
+            longitude: rideData.start.coords.lng,
+          },
+          endLocation: {
+            name: rideData.destination.name,
+            address: rideData.destination.name,
+            latitude: rideData.destination.coords.lat,
+            longitude: rideData.destination.coords.lng,
+          },
+          startTime,
+          transportMode: transportMap[rideData.transport] || rideData.transport,
+          availableSeats: rideData.totalPassengers,
+          fare: rideData.fare === 'TBA' ? 0 : parseFloat(rideData.fare || 0),
+          rideProvider: 'Private',
+          genderPreference: rideData.gender && rideData.gender !== 'Any' ? rideData.gender.toLowerCase() : null,
+          notes: rideData.preferences,
+          routePolyline: rideData.routePolyline,
+        };
+
+        const created = await createRide(payload);
+        if (isMounted) {
+          setCreatedRide(created);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setCreationError(error.message || 'Failed to create ride');
+        }
+      }
+    };
+
+    submitRide();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [createRide, rideData]);
 
   return (
     <ScrollView>
       <Title>Your ride is created!</Title>
 
-      <RouteMap ride={rideData} />
+      <RouteMap ride={createdRide || rideData} />
 
-      <RideCard create={true} ride={rideData} />
+      <RideCard create={true} ride={createdRide || rideData} />
+
+      {creationError && (
+        <Text style={{ marginTop: 10, color: '#e63e4c' }}>{creationError}</Text>
+      )}
 
       <View style={{flexDirection: 'column', alignSelf: 'center', alignItems: 'center', marginVertical: 15}}>
         <Text>Other users can now see your ride!</Text>

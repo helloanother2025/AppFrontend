@@ -1,15 +1,26 @@
-import React, { use } from 'react';
+import React from 'react';
 import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView'
 import { StyledTitle as Title } from '../../../components/StyledTitle' 
 import { StyledButton as Button } from '../../../components/StyledButton'; 
 import RouteMap from '../../../components/RouteMap'
 import RideCard from '../../../components/RideDisplayCard'
 import rides from '../../../data/rideData.json'
-import { useRouter } from 'expo-router'; 
+import { useRouter } from 'expo-router';
+import { useRide } from '../../../context/RideContext';
 
 export default function FareCalculation() {
   const router = useRouter();
-  const currentRide = rides[0];
+  const { selectedRide, myRides, rides: availableRides } = useRide();
+  const currentRide = selectedRide || myRides[0] || availableRides[0] || rides[0];
+
+  if (!currentRide) {
+    return (
+      <ScrollView>
+        <Title>Ride completed!</Title>
+        <Text>No ride data available.</Text>
+      </ScrollView>
+    );
+  }
 
   return (
     <ScrollView>

@@ -3,6 +3,7 @@ import { View, TouchableOpacity, StyleSheet } from 'react-native'
 import MapView, { Marker } from 'react-native-maps'
 import { StyledSearchBar as TextInput } from './StyledSearchBar'
 import { StyledText as Text } from './StyledText'
+import { searchPlaces, getPlaceDetails } from '../src/utils/mapServices'
 
 const INITIAL_REGION = {
   latitude: 23.8103,
@@ -16,17 +17,8 @@ export default function MapSearch({ onPlaceSelected, searchQuery, style }) {
   const [query, setQuery] = useState(searchQuery || '')
   const [selectedPlace, setSelectedPlace] = useState(null)
   const [suggestions, setSuggestions] = useState([])
-  const [sessionToken, setSessionToken] = useState(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
-
-  function uuidv4() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
-  }
 
   useEffect(() => {
     if (searchQuery) {
@@ -35,20 +27,15 @@ export default function MapSearch({ onPlaceSelected, searchQuery, style }) {
   }, [searchQuery])
 
   useEffect(() => {
-    if (query.trim().length < 2 || !sessionToken) {
+    if (query.trim().length < 2) {
       setSuggestions([])
       return
     }
 
     const timeout = setTimeout(async () => {
       setIsLoading(true)
-      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
-        query
-      )}&key=${apiKey}&components=country:bd&sessiontoken=${sessionToken}`
-
-      const resp = await fetch(url)
-      const json = await resp.json()
-      setSuggestions(json?.predictions || [])
+      const results = await searchPlaces(query)
+      setSuggestions(results || [])
       setIsLoading(false)
     }, 350)
 
@@ -57,10 +44,12 @@ export default function MapSearch({ onPlaceSelected, searchQuery, style }) {
 
   const handleSelect = async (place) => {
     try {
-      const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=geometry,name,formatted_address&key=${apiKey}&sessiontoken=${sessionToken}`
-      const resp = await fetch(detailsUrl)
-      const json = await resp.json()
-      const loc = json.result.geometry.location
+      const details = await getPlaceDetails(place)
+      const loc = details?.result?.geometry?.location
+
+      if (!loc) {
+        return
+      }
 
       const region = {
         latitude: loc.lat,
@@ -70,17 +59,16 @@ export default function MapSearch({ onPlaceSelected, searchQuery, style }) {
       }
 
       setSelectedPlace({
-        name: json.result.name,
-        address: json.result.formatted_address,
+        name: details?.result?.name,
+        address: details?.result?.formatted_address,
         latitude: loc.lat,
         longitude: loc.lng,
       })
 
       mapRef.current?.animateToRegion(region, 500)
-      onPlaceSelected?.(json.result)
+      onPlaceSelected?.(details?.result)
       setShowSuggestions(false)
       setQuery(place.description)
-      setSessionToken(null)
     } catch (err) {
       console.error(err)
     }
@@ -88,20 +76,17 @@ export default function MapSearch({ onPlaceSelected, searchQuery, style }) {
 
   return (
     <View style={style}>
-      <TextInput
-        placeholder="Search location..."
-        value={query}
-        onChangeText={(t) => {
-          setQuery(t)
-          if (!sessionToken) {
-            setSessionToken(uuidv4())
-          }
-          setShowSuggestions(true)
-        }}
-      />
+      <View style={styles.searchContainer}>
+        <TextInput
+          placeholder="Search location..."
+          value={query}
+          onChangeText={(t) => {
+            setQuery(t)
+            setShowSuggestions(true)
+          }}
+        />
 
-      {showSuggestions && (
-        <View style={styles.suggestionOverlay}>
+        {showSuggestions && suggestions.length > 0 && (
           <View style={styles.suggestionList}>
             {isLoading && <Text>Loading...</Text>}
             {suggestions.map((item) => (
@@ -114,9 +99,8 @@ export default function MapSearch({ onPlaceSelected, searchQuery, style }) {
               </TouchableOpacity>
             ))}
           </View>
-        </View>
-      )}
-
+        )}
+      </View>
 
       <View style={styles.mapWrapper}>
         <MapView ref={mapRef} style={styles.map} initialRegion={INITIAL_REGION}>
@@ -137,6 +121,10 @@ export default function MapSearch({ onPlaceSelected, searchQuery, style }) {
 }
 
 const styles = StyleSheet.create({
+  searchContainer: {
+    position: 'relative',
+    zIndex: 10,
+  },
   mapWrapper: {
     width: '100%',
     aspectRatio: 1,
@@ -151,20 +139,13 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  suggestionOverlay: {
-    position: 'absolute',
-    top: 50, 
-    left: 10,
-    right: 10,
-    zIndex: 10,
-  },
   suggestionList: {
     backgroundColor: '#fff',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#ddd',
     maxHeight: 250,
-    overflow: 'hidden',
+    marginTop: -8,
     elevation: 5, 
     shadowColor: '#000',
     shadowOpacity: 0.15,
