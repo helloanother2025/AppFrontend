@@ -4,12 +4,17 @@ import { StyledScrollView as ScrollView } from '../../../components/StyledScroll
 import { StyledTitle as Title } from '../../../components/StyledTitle';
 import RideCard from '../../../components/RideDisplayCard';
 import { useRouter } from 'expo-router';
-import rides from '../../../data/rideData.json';
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useRide } from '../../../context/RideContext';
 
 const Dash = () => {
-  const activeRide = rides[0];
+  const { myRides, rides, fetchMyRides } = useRide();
+  const activeRide = myRides.find((r) => ['unactive', 'started'].includes(r.status)) || myRides[0] || rides[0];
   const router = useRouter();
+
+  useEffect(() => {
+    fetchMyRides();
+  }, [fetchMyRides]);
 
   return (
     <ScrollView>
@@ -42,7 +47,11 @@ const Dash = () => {
       <Title style={{marginTop: 10}}>Your ongoing rides</Title>
 
       {/* Ride Card */}
-      <RideCard ride={activeRide} ongoing={true} onPress={() => router.push(`/${activeRide.id}`)}/>
+      {activeRide ? (
+        <RideCard ride={activeRide} ongoing={true} onPress={() => router.push(`/${activeRide.id}`)} />
+      ) : (
+        <Text style={{ marginTop: 10 }}>No active rides yet.</Text>
+      )}
     </ScrollView>
   );
 };

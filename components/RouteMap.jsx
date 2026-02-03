@@ -2,8 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import CustomMarker from './CustomMapMarker';
 import MapView, { Marker, Polyline } from 'react-native-maps';
-
-const GOOGLE_MAPS_APIKEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+import { getDirections, decodePolyline } from '../src/utils/mapServices';
 
 const RouteMap = ({ ride, userStartCoords, userDestCoords }) => {
   const mapRef = useRef(null);
@@ -36,17 +35,9 @@ const RouteMap = ({ ride, userStartCoords, userDestCoords }) => {
 
   const fetchDirections = async (start, destination, setCoords) => {
     try {
-      const response = await fetch(
-        `https://maps.googleapis.com/maps/api/directions/json?origin=${start.latitude},${start.longitude}&destination=${destination.latitude},${destination.longitude}&mode=driving&key=${GOOGLE_MAPS_APIKEY}`
-      );
-      const json = await response.json();
-
-      if (json.routes.length) {
-        const encoded = json.routes[0].overview_polyline.points;
-        const decoded = decodePolyline(encoded);
-        setCoords(decoded);
-
-        // await updateRideRoute(ride.id, encoded);
+      const directions = await getDirections(start, destination);
+      if (directions?.coordinates?.length) {
+        setCoords(directions.coordinates);
       }
     } catch (error) {
       console.error('Error fetching directions:', error);
@@ -62,36 +53,6 @@ const RouteMap = ({ ride, userStartCoords, userDestCoords }) => {
       });
     }
   }, [routeCoords, userRouteCoords]);
-
-  const decodePolyline = (t) => {
-    let points = [];
-    let index = 0, lat = 0, lng = 0;
-
-    while (index < t.length) {
-      let b, shift = 0, result = 0;
-      do {
-        b = t.charCodeAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      const dlat = (result & 1) ? ~(result >> 1) : (result >> 1);
-      lat += dlat;
-
-      shift = 0;
-      result = 0;
-      do {
-        b = t.charCodeAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      const dlng = (result & 1) ? ~(result >> 1) : (result >> 1);
-      lng += dlng;
-
-      points.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
-    }
-
-    return points;
-  };
 
   return (
     <View style={styles.mapWrapper}>

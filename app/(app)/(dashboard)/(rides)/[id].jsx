@@ -5,15 +5,32 @@ import RideDetailsCard from '../../../../components/RideDetailsCard'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import RouteMap from '../../../../components/RouteMap'
-import rides from '../../../../data/rideData.json'
-import React  from 'react';
+import React, { useEffect, useState } from 'react';
+import { useRide } from '../../../../context/RideContext';
 
 
 const RideDetails = () => {
   const { id } = useLocalSearchParams();
-  const ride = rides.find(r => r.id === parseInt(id));
+  const { rides, getRideDetails } = useRide();
+  const [ride, setRide] = useState(null);
+
+  const rideId = Array.isArray(id) ? id[0] : id;
 
   const router = useRouter();
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      const fetched = await getRideDetails(rideId);
+      const fallback = rides.find((r) => String(r.id) === String(rideId));
+      if (isMounted) {
+        setRide(fetched || fallback || null);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [rideId, getRideDetails, rides]);
 
   if (!ride) {
     return (

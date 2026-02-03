@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { RideProvider } from '../../context/RideContext';
 import { SearchProvider } from '../../context/SearchContext';
+import { UserProvider } from '../../context/UserContext';
 import DashboardHeader from '../../components/AppHeader';
 import Entypo from '@expo/vector-icons/Entypo';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -9,8 +10,9 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 export default function TabsLayout() {
   return (
     <SearchProvider>
-      <RideProvider>
-        <Tabs
+      <UserProvider>
+        <RideProvider>
+          <Tabs
       screenOptions={{
         header: () => <DashboardHeader />,
         headerShown: true,
@@ -59,34 +61,35 @@ export default function TabsLayout() {
       />
       {/* hide from tabs */} 
       <Tabs.Screen 
-      name="(dashboard)/[id]" 
-      options={{ href: null}} 
+        name="(dashboard)/[id]" 
+        options={{ href: null}} 
       />
       <Tabs.Screen 
-      name="(joinRide)" 
-      options={{ href: null}} 
+        name="(joinRide)" 
+        options={{ href: null}} 
       />
       <Tabs.Screen 
-      name="(completeRide)/complete" 
-      options={{ href: null}} 
+        name="(completeRide)/complete" 
+        options={{ href: null}} 
       />
       <Tabs.Screen 
-      name="(completeRide)/fareCalculation" 
-      options={{ href: null}} 
+        name="(completeRide)/fareCalculation" 
+        options={{ href: null}} 
       />
       <Tabs.Screen 
-      name="(createRide)" 
-      options={{ href: null}} 
+        name="(completeRide)/rateRide" 
+        options={{ href: null}} 
       />
       <Tabs.Screen 
-      name="(chat)/chatScreen" 
-      options={{
-        href: null,
-        headerShown: false,
-        tabBarStyle: { display: 'none'}
-      }} 
+        name="(createRide)" 
+        options={{ href: null}} 
       />
-            </Tabs>
-          </RideProvider>
-        </SearchProvider>
+      <Tabs.Screen 
+        name="(chat)/chatScreen" 
+        options={{ href: null }} 
+      />
+    </Tabs>
+        </RideProvider>
+      </UserProvider>
+    </SearchProvider>
       );}

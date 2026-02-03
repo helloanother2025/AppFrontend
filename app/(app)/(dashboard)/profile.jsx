@@ -1,18 +1,54 @@
-import { View, StyleSheet, TouchableOpacity } from 'react-native'
+import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native'
 import { StyledText as Text } from '../../../components/StyledText'
 import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView'
 import { StyledCard as Card} from '../../../components/StyledCard'
 import { StyledLink } from '../../../components/StyledLink'
+import { StyledButton as Button } from '../../../components/StyledButton'
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5'
 import users from '../../../data/userData.json'
 import rides from '../../../data/rideData.json'
+import { useRide } from '../../../context/RideContext'
+import { useUser } from '../../../context/UserContext'
+import React, { useEffect } from 'react'
+import { useRouter } from 'expo-router'
 
 const UserProfile = () => {
-  const user = users[0];
+  const { currentUser, fetchCurrentUser, logout } = useUser();
+  const { myRides, joinedRides, fetchMyRides, fetchJoinedRides } = useRide();
+  const router = useRouter();
+  const user = currentUser || users[0];
 
-  const createdRides = rides.filter(r => r.creator.handle === user.handle);
+  const createdRides = myRides.length ? myRides : (rides.filter(r => r.creator.handle === (user.handle || (user.username ? `@${user.username}` : undefined))));
 
-  const joinedRides = rides.filter(r => r.partners.some(p => p.handle === user.handle));
+  const joinedRidesData = joinedRides.length ? joinedRides : (rides.filter(r => r.partners.some(p => p.handle === (user.handle || (user.username ? `@${user.username}` : undefined)))));
+
+  useEffect(() => {
+    fetchCurrentUser();
+    fetchMyRides();
+    fetchJoinedRides();
+  }, [fetchCurrentUser, fetchMyRides, fetchJoinedRides]);
+
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+              router.replace('/(auth)/login');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   if (!user) {
     return (
@@ -32,7 +68,7 @@ const UserProfile = () => {
         <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start'}}>
           <View>
             <Text style={styles.name}>{user.name}</Text>
-            <Text style={styles.handle}>{user.handle}</Text>
+            <Text style={styles.handle}>{user.handle || (user.username ? `@${user.username}` : '')}</Text>
             <Text style={styles.bio}>{user.bio || "Hello, fellow ride sharer!"}</Text>
           </View>
 
@@ -49,12 +85,12 @@ const UserProfile = () => {
           </View>
           
           <View style={{alignItems: 'center'}}>
-            <Text style={styles.statValue}>{joinedRides.length}</Text>
+            <Text style={styles.statValue}>{joinedRidesData.length}</Text>
             <Text style={{fontSize: 11}}>Rides Joined</Text>
           </View>
           
           <View style={{alignItems: 'center'}}>
-            <Text style={styles.statValue}>{user.rating}</Text>
+            <Text style={styles.statValue}>{user.rating ?? user.avg_rating ?? '-'}</Text>
             <Text style={{fontSize: 11}}>Overall Rating</Text>
           </View>
         </View>
@@ -69,6 +105,12 @@ const UserProfile = () => {
           <StyledLink type='email' text={user.email} value={user.email} ></StyledLink>
         </View>      
       </Card>
+
+      <Button
+        title="Logout"
+        onPress={handleLogout}
+        style={{ marginTop: 20, backgroundColor: '#e63e4c' }}
+      />
     </ScrollView>
   );
 };

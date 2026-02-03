@@ -23,7 +23,17 @@ export default function TransportOptions() {
     } else {
       fareValue = parseFloat(fareValue).toFixed(2); 
     }
-    setRideData({ ...rideData, fare: fareValue, transport: selectedTransport === 'Other' ? 'Car' : selectedTransport });
+    
+    // Map frontend transport options to database enum values
+    const transportMapping = {
+      'Uber': 'Car',
+      'Pathao': 'Bike',
+      'Private Car': 'Car',
+      'Other': 'Car'
+    };
+    
+    const transportMode = transportMapping[selectedTransport] || selectedTransport;
+    setRideData({ ...rideData, fare: fareValue, transport: transportMode });
     router.push('/ridePreferences');
   }
 

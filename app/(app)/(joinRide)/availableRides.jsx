@@ -11,10 +11,10 @@ import RideCard from '../../../components/RideDisplayCard';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import rides from '../../../data/rideData.json';
 import { useSearch } from '../../../context/SearchContext';
 import { useRouter } from 'expo-router';
 import * as polyline from '@mapbox/polyline';
+import { useRide } from '../../../context/RideContext';
 
 const toRad = (x) => (x * Math.PI) / 180;
 
@@ -126,6 +126,7 @@ const AvailableRides = () => {
   const router = useRouter();
   const { searchData } = useSearch();
   const scrollRef = useRef(null);
+  const { rides: availableRides, fetchAvailableRides } = useRide();
 
   const [showSearch, setShowSearch] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
@@ -133,7 +134,7 @@ const AvailableRides = () => {
   const [selectedTransport, setSelectedTransport] = useState(null);
   const [selectedGender, setSelectedGender] = useState(null);
   const [leaveNow, setLeaveNow] = useState(false);
-  const [displayedRides, setDisplayedRides] = useState(rides);
+  const [displayedRides, setDisplayedRides] = useState([]);
 
   const filterRides = async (ridesList) => {
     const RADIUS_THRESHOLD_KM = 5; // near endpoints
@@ -198,20 +199,24 @@ const AvailableRides = () => {
   };
 
   useEffect(() => {
+    fetchAvailableRides();
+  }, [fetchAvailableRides]);
+
+  useEffect(() => {
     (async () => {
-      const filtered = await filterRides(rides);
+      const filtered = await filterRides(availableRides);
       setDisplayedRides(filtered);
 
       if (scrollRef.current) {
         setTimeout(() => scrollRef.current.scrollToEnd({ animated: true }), 150);
       }
     })();
-  }, [selectedTransport, selectedGender, searchData]);
+  }, [selectedTransport, selectedGender, searchData, availableRides]);
 
   const onDateChange = (selectedDate) => setDate(selectedDate || date);
 
   const handleSearch = async () => {
-    const filtered = await filterRides(rides);
+    const filtered = await filterRides(availableRides);
     setDisplayedRides(filtered);
     setShowSearch(true);
   };
@@ -223,7 +228,7 @@ const AvailableRides = () => {
   const clearFilters = () => {
     setSelectedTransport(null);
     setSelectedGender(null);
-    setDisplayedRides(rides);
+    setDisplayedRides(availableRides);
   };
 
   return (
