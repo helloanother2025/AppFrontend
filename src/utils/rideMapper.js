@@ -54,6 +54,7 @@ export const normalizeRide = (ride) => {
       },
       creator: {
         ...ride.creator,
+        user_id: ride.creator.user_id ?? ride.creator.id ?? ride.creator.userId,
         handle: ensureHandle(ride.creator.handle, ride.creator.username),
       },
       date: ride.date ?? formatRideDate(ride.start_time ?? ride.startTime),
@@ -95,6 +96,7 @@ export const normalizeRide = (ride) => {
     },
     creator: {
       name: ride.name ?? ride.creator_name ?? ride.creatorName ?? 'Unknown',
+      user_id: ride.creator_id ?? ride.creatorId ?? ride.user_id ?? ride.userId,
       handle: ensureHandle(ride.username ?? ride.creator_handle ?? ride.creatorHandle, ride.username),
     },
     partners: Array.isArray(ride.passengers)

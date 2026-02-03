@@ -1,20 +1,46 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { StyledScrollView as ScrollView } from '../../../../components/StyledScrollView';
 import { StyledTitle as Title } from '../../../../components/StyledTitle';
 import RideCard from '../../../../components/RideDisplayCard';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useRide } from '../../../../context/RideContext';
 
 
 const UserRides = () => {
-  const { myRides, fetchMyRides } = useRide();
-  const activeRides = myRides.filter((ride) => ['unactive', 'started'].includes(ride.status));
-  const previousRides = myRides.filter((ride) => ['completed', 'cancelled', 'expired'].includes(ride.status));
+  const { myRides, joinedRides, fetchMyRides, fetchJoinedRides } = useRide();
+  
+  // Combine created and joined rides
+  const allMyRides = [...myRides, ...joinedRides];
+  console.log('🚗 Rides page - myRides:', myRides.length, 'joinedRides:', joinedRides.length);
+  
+  // Filter for ongoing (not completed, cancelled, or expired)
+  const activeRides = allMyRides.filter((ride) => 
+    ride.status && !['completed', 'cancelled', 'expired'].includes(ride.status)
+  );
+  console.log('📊 Active rides:', activeRides.length);
+  
+  // Filter for previous rides (completed, cancelled, or expired)
+  const previousRides = allMyRides.filter((ride) => 
+    ride.status && ['completed', 'cancelled', 'expired'].includes(ride.status)
+  );
+  console.log('📊 Previous rides:', previousRides.length);
+  
   const router = useRouter();
 
   useEffect(() => {
     fetchMyRides();
-  }, [fetchMyRides]);
+    fetchJoinedRides();
+  }, [fetchMyRides, fetchJoinedRides]);
+
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('📱 Rides page focused, refreshing rides');
+      fetchMyRides();
+      fetchJoinedRides();
+    }, [fetchMyRides, fetchJoinedRides])
+  );
 
   return (
     <ScrollView>

@@ -136,6 +136,14 @@ const AvailableRides = () => {
   const [leaveNow, setLeaveNow] = useState(false);
   const [displayedRides, setDisplayedRides] = useState([]);
 
+  const getRideStartDate = (ride) => {
+    const raw = ride?.start_time ?? ride?.startTime ?? ride?.start_time_utc ?? ride?.startTimeUtc ?? ride?.dateTime;
+    if (!raw) return null;
+    const parsed = raw instanceof Date ? raw : new Date(raw);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+  };
+
   const filterRides = async (ridesList) => {
     const RADIUS_THRESHOLD_KM = 5; // near endpoints
     const ROUTE_THRESHOLD_KM = 2;  // near the route
@@ -187,11 +195,31 @@ const AvailableRides = () => {
       });
     }
 
-    // Transport and gender filters
+    // Date and "leave now" filters
+    if (leaveNow) {
+      const now = new Date();
+      const nowPlus = new Date(now.getTime() + 30 * 60 * 1000);
+      filtered = filtered.filter((ride) => {
+        const rideDate = getRideStartDate(ride);
+        return rideDate && rideDate >= now && rideDate <= nowPlus;
+      });
+    } else if (date) {
+      filtered = filtered.filter((ride) => {
+        const rideDate = getRideStartDate(ride);
+        return rideDate && rideDate >= date;
+      });
+    }
+
+    // Transport and gender filters (case-insensitive)
     filtered = filtered.filter((ride) => {
-      if (selectedTransport && ride.transport !== selectedTransport) return false;
-      if (selectedGender  && ride.gender !== selectedGender)
-        return false;
+      if (selectedTransport) {
+        const rideTransport = ride.transport ?? ride.transport_mode ?? ride.transportMode;
+        if (!rideTransport || rideTransport.toLowerCase() !== selectedTransport.toLowerCase()) return false;
+      }
+      if (selectedGender && selectedGender !== 'Any') {
+        const rideGender = ride.gender ?? ride.gender_preference ?? ride.genderPreference;
+        if (!rideGender || rideGender.toLowerCase() !== selectedGender.toLowerCase()) return false;
+      }
       return true;
     });
 
@@ -211,11 +239,27 @@ const AvailableRides = () => {
         setTimeout(() => scrollRef.current.scrollToEnd({ animated: true }), 150);
       }
     })();
-  }, [selectedTransport, selectedGender, searchData, availableRides]);
+  }, [selectedTransport, selectedGender, date, leaveNow, searchData, availableRides]);
 
   const onDateChange = (selectedDate) => setDate(selectedDate || date);
 
+  const buildFilterParams = () => {
+    const params = {};
+    if (selectedTransport) params.transportMode = selectedTransport;
+    if (selectedGender && selectedGender !== 'Any') params.genderPreference = selectedGender;
+    if (leaveNow) {
+      const now = new Date();
+      const nowPlus = new Date(now.getTime() + 30 * 60 * 1000);
+      params.afterDate = now.toISOString();
+      params.beforeDate = nowPlus.toISOString();
+    } else if (date) {
+      params.afterDate = date.toISOString();
+    }
+    return params;
+  };
+
   const handleSearch = async () => {
+    await fetchAvailableRides(buildFilterParams());
     const filtered = await filterRides(availableRides);
     setDisplayedRides(filtered);
     setShowSearch(true);
@@ -228,6 +272,8 @@ const AvailableRides = () => {
   const clearFilters = () => {
     setSelectedTransport(null);
     setSelectedGender(null);
+    setDate(null);
+    setLeaveNow(false);
     setDisplayedRides(availableRides);
   };
 

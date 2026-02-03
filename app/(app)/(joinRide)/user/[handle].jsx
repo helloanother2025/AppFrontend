@@ -78,7 +78,18 @@ const UserDetails = () => {
             <Text style={styles.bio}>{profile.bio || "Hello, fellow ride sharer!"}</Text>
           </View>
 
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => {
+            const uid = profile.user_id || profile.id || profile.userId;
+            console.log('💬 Opening chat with user:', { uid, name: profile.name, handle: profile.handle });
+            router.push({ 
+              pathname: '/(chat)/chatScreen', 
+              params: { 
+                userId: String(uid),
+                userName: profile.name,
+                userHandle: profile.handle || profile.username
+              } 
+            });
+          }}>
             <Ionicons name="chatbubble-ellipses" size={28} color="#e63e4c" style={styles.icon} />
           </TouchableOpacity>
         </View>

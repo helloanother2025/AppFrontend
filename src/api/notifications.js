@@ -2,9 +2,16 @@ import client from './client';
 
 export const notificationsAPI = {
   getNotifications: async (isRead = false, limit = 20) => {
-    const response = await client.get('/notifications', {
-      params: { isRead: isRead ? 'true' : 'false', limit },
-    });
+    const params = { limit };
+    
+    // Support 'all', true, false, or string values
+    if (isRead !== 'all') {
+      params.isRead = isRead === true || isRead === 'true' ? 'true' : 'false';
+    } else {
+      params.isRead = 'all';
+    }
+    
+    const response = await client.get('/notifications', { params });
     return response.data;
   },
 

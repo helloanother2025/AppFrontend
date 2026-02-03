@@ -35,4 +35,9 @@ export const joinRequestsAPI = {
     const response = await client.patch(`/join-requests/${requestId}/cancel`);
     return response.data;
   },
+
+  checkJoinStatus: async (rideId) => {
+    const response = await client.get(`/join-requests/status/${rideId}`);
+    return response.data;
+  },
 };
