@@ -70,12 +70,15 @@ export const RideProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
+      console.log('🔵 Fetching joined rides...');
       const data = await ridesAPI.getJoinedRides(filters);
+      console.log('📦 Joined rides data:', data);
       const normalized = normalizeRideList(data?.rides ?? data ?? []);
+      console.log('✅ Normalized joined rides:', normalized.length, 'rides');
       setJoinedRides(normalized);
       return normalized;
     } catch (err) {
-      console.error('Failed to fetch joined rides:', err);
+      console.error('❌ Failed to fetch joined rides:', err);
       setJoinedRides([]);
       setError(err.message || 'Failed to fetch joined rides');
       return [];

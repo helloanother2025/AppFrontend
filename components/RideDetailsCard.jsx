@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { StyledText as Text } from './StyledText';
 import { StyledCard as Card } from './StyledCard';
@@ -21,10 +21,30 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
   const [showPassengers, setShowPassengers] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [isRequested, setIsRequested] = useState(false);
+  const [joinStatus, setJoinStatus] = useState(null);
   const [isCompleted, setIsCompleted] = useState(false);
   const [requesting, setRequesting] = useState(false);
 
   if (!ride) return <Text>No ride data provided.</Text>;
+
+  // Check if user has already requested to join this ride
+  useEffect(() => {
+    const checkStatus = async () => {
+      if (ride?.id && join) {
+        try {
+          const response = await joinRequestsAPI.checkJoinStatus(ride.id);
+          if (response.hasRequested) {
+            setIsRequested(true);
+            setJoinStatus(response.status);
+            console.log('📌 Join status for ride', ride.id, ':', response.status);
+          }
+        } catch (error) {
+          console.error('Failed to check join status:', error);
+        }
+      }
+    };
+    checkStatus();
+  }, [ride?.id, join]);
 
   
   const findUserByHandle = (handle) => users.find(u => u.handle === handle);
@@ -32,30 +52,56 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
   const creator = findUserByHandle(ride.creator?.handle) || ride.creator || { name: 'Unknown', handle: '@user' };
 
   const handleRequest = async () => {
+    console.log('🔵 handleRequest called, ride.id:', ride?.id, 'isRequested:', isRequested, 'requesting:', requesting);
+    
     if (!ride?.id) {
       Alert.alert('Error', 'Ride information missing');
       return;
     }
 
+    if (isRequested) {
+      console.log('⚠️ Request already sent, skipping');
+      return;
+    }
+
     setRequesting(true);
+    console.log('🔷 Setting requesting to true, submitting join request for ride:', ride.id);
+    
     try {
-      await joinRequestsAPI.submitJoinRequest(
+      
+      // Normalize coordinates to ensure they have both lat/lng and latitude/longitude
+      const normalizeCoords = (coords) => {
+        if (!coords) return null;
+        const lat = coords.lat ?? coords.latitude;
+        const lng = coords.lng ?? coords.longitude;
+        return (lat !== undefined && lng !== undefined) ? { lat, lng } : null;
+      };
+
+      const startCoords = normalizeCoords(searchData.start?.coords);
+      const destCoords = normalizeCoords(searchData.destination?.coords);
+
+      const response = await joinRequestsAPI.submitJoinRequest(
         ride.id,
-        searchData.start?.coords ? {
-          name: searchData.start.name,
-          latitude: searchData.start.coords.lat,
-          longitude: searchData.start.coords.lng,
+        startCoords ? {
+          name: searchData.start?.name || searchData.start?.address || 'Start Location',
+          latitude: startCoords.lat,
+          longitude: startCoords.lng,
         } : null,
-        searchData.destination?.coords ? {
-          name: searchData.destination.name,
-          latitude: searchData.destination.coords.lat,
-          longitude: searchData.destination.coords.lng,
+        destCoords ? {
+          name: searchData.destination?.name || searchData.destination?.address || 'Destination',
+          latitude: destCoords.lat,
+          longitude: destCoords.lng,
         } : null,
         searchData.routePolyline || null
       );
+      
+      console.log('✅ Join request response:', response);
       setIsRequested(true);
+      setJoinStatus('pending');
+      Alert.alert('Success', 'Your request has been sent! Check notifications for updates.');
       router.push('/joinRequested');
     } catch (error) {
+      console.error('❌ Join request error:', error);
       Alert.alert('Error', error.message || 'Failed to submit join request');
     } finally {
       setRequesting(false);
@@ -71,7 +117,16 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
     <Card>
       {join && (
         <Button
-          title={requesting ? "Sending..." : (isRequested ? "Request sent" : "Request to join")}
+          title={
+            requesting ? "Sending..." : 
+            isRequested ? (
+              joinStatus === 'accepted' ? "Already Joined" : 
+              joinStatus === 'rejected' ? "Request Declined" :
+              joinStatus === 'cancelled' ? "Request Cancelled" :
+              "Request Sent"
+            ) : 
+            "Request to join"
+          }
           style={[{ marginBottom: 20 }, (isRequested || requesting) && { backgroundColor: '#ababab' }]}
           onPress={handleRequest}
           disabled={isRequested || requesting}
@@ -124,7 +179,21 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
 
         {(join || ongoing) && (
           <View style={styles.contactRow}>
-            <TouchableOpacity style={{ paddingHorizontal: 10, marginRight: 15 }} onPress={() => router.push({ pathname: '/(chat)/chatScreen', params: { handle: creator.handle } })}>
+            <TouchableOpacity 
+              style={{ paddingHorizontal: 10, marginRight: 15 }} 
+              onPress={() => {
+                const uid = ride.creator_id || creator.user_id || creator.id;
+                console.log('💬 Opening chat from ride details:', { uid, creator: creator.name });
+                router.push({ 
+                  pathname: '/(chat)/chatScreen', 
+                  params: { 
+                    userId: String(uid),
+                    userName: creator.name,
+                    userHandle: creator.handle || creator.username
+                  } 
+                });
+              }}
+            >
               <Ionicons name="chatbubble-ellipses" size={22} color="#e63e4c" />
             </TouchableOpacity>
             <StyledLink type="phone" value={creator.phone} style={{ marginVertical: 0 }} />

@@ -32,10 +32,13 @@ client.interceptors.request.use(async (config) => {
 client.interceptors.response.use(
   (response) => {
     loadingStateManager.decrement();
+    console.log('✅ API Response:', response.config.url, response.status);
     return response;
   },
   async (error) => {
     loadingStateManager.decrement();
+    console.error('❌ API Error:', error.config?.url, error.response?.status);
+    console.error('Error details:', error.response?.data || error.message);
     return Promise.reject(error);
   }
 );

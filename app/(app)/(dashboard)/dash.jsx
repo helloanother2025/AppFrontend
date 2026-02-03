@@ -4,17 +4,37 @@ import { StyledScrollView as ScrollView } from '../../../components/StyledScroll
 import { StyledTitle as Title } from '../../../components/StyledTitle';
 import RideCard from '../../../components/RideDisplayCard';
 import { useRouter } from 'expo-router';
-import React, { useEffect } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useEffect, useCallback } from 'react';
 import { useRide } from '../../../context/RideContext';
 
 const Dash = () => {
-  const { myRides, rides, fetchMyRides } = useRide();
-  const activeRide = myRides.find((r) => ['unactive', 'started'].includes(r.status)) || myRides[0] || rides[0];
+  const { myRides, joinedRides, rides, fetchMyRides, fetchJoinedRides } = useRide();
+  
+  // Combine created and joined rides, filter for ongoing (not completed)
+  const allMyRides = [...myRides, ...joinedRides];
+  console.log('🚗 Dashboard - myRides:', myRides.length, 'joinedRides:', joinedRides.length);
+  const ongoingRides = allMyRides.filter((r) => 
+    r.status && !['completed', 'cancelled', 'expired'].includes(r.status)
+  );
+  console.log('📊 Ongoing rides:', ongoingRides.length);
+  const activeRide = ongoingRides[0] || rides[0];
+  
   const router = useRouter();
 
   useEffect(() => {
     fetchMyRides();
-  }, [fetchMyRides]);
+    fetchJoinedRides();
+  }, [fetchMyRides, fetchJoinedRides]);
+
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('📱 Dashboard focused, refreshing rides');
+      fetchMyRides();
+      fetchJoinedRides();
+    }, [fetchMyRides, fetchJoinedRides])
+  );
 
   return (
     <ScrollView>

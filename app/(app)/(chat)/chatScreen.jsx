@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, Image, Keyboard, Modal, PanResponder, Animated, Alert, Platform, Dimensions } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Image, Keyboard, Modal, PanResponder, Animated, Alert, Platform, Dimensions, KeyboardAvoidingView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { FontAwesome } from '@expo/vector-icons';
@@ -13,6 +13,10 @@ import { Video } from 'expo-video';
 import users from '../../../data/userData.json';
 import * as Linking from 'expo-linking';
 import { StyledText as Text } from '../../../components/StyledText';
+import { chatAPI } from '../../../src/api/chat';
+import { useUser } from '../../../context/UserContext';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 const SwipeableBubble = ({ children, message, onReply, position }) => {
@@ -56,36 +60,26 @@ const SwipeableBubble = ({ children, message, onReply, position }) => {
 
 export default function ChatScreen() {
   const router = useRouter();
-  const { handle } = useLocalSearchParams();
-  const user = users.find(u => u.handle === handle);
+  const { handle, userId, userName, userHandle } = useLocalSearchParams();
+  const { currentUser } = useUser();
+  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
   const flatListRef = useRef(null);
   const chatRef = useRef(null);
   const animRefs = useRef({});
 
-  if (!user) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>User not found</Text>
-      </View>
-    );
-  }
-
+  const [chatId, setChatId] = useState(null);
+  const [otherUser, setOtherUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [lightboxVisible, setLightboxVisible] = useState(false);
   const [lightboxImage, setLightboxImage] = useState(null);
   const [replyingTo, setReplyingTo] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [inputText, setInputText] = useState('');
+  const [error, setError] = useState(null);
 
-
-  const [messages, setMessages] = useState([
-    {
-      _id: 3,
-      text: 'Hi there!',
-      createdAt: new Date('2025-10-15T10:00:00'),
-      user: { _id: 2, name: user.name, avatar: user.profilePicture },
-    },
-  ]);
-
-  // Keyboard listener
+  // Keyboard listener - MUST be before any early returns
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
     const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
@@ -95,41 +89,189 @@ export default function ChatScreen() {
     };
   }, []);
 
+  // Debug params
+  useEffect(() => {
+    console.log('Chat screen params:', { handle, userId, userName, userHandle });
+  }, [handle, userId, userName, userHandle]);
+
+  // Poll for new messages
+  useEffect(() => {
+    let isMounted = true;
+    let intervalId = null;
+
+    const fetchMessages = async () => {
+      if (!chatId) return;
+      try {
+        const messagesResponse = await chatAPI.getMessages(chatId);
+        if (isMounted && messagesResponse?.messages) {
+          const formattedMessages = messagesResponse.messages.map(msg => ({
+            _id: msg.message_id,
+            text: msg.content,
+            createdAt: new Date(msg.created_at),
+            user: {
+              _id: msg.sender_id,
+              name: msg.sender_id === currentUser?.user_id ? 'You' : otherUser?.name || 'User',
+            },
+            ...(msg.media_url && { image: msg.media_url }),
+          }));
+          setMessages(formattedMessages.reverse());
+        }
+      } catch (pollError) {
+        console.warn('Failed to poll messages:', pollError);
+      }
+    };
+
+    if (chatId) {
+      fetchMessages();
+      intervalId = setInterval(fetchMessages, 4000);
+    }
+
+    return () => {
+      isMounted = false;
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [chatId, currentUser?.user_id, otherUser?.name]);
+
+  // Initialize chat with backend
+  useEffect(() => {
+    const initChat = async () => {
+      try {
+        setLoading(true);
+        console.log('🔵 Initializing chat with params:', { handle, userId, userName, userHandle });
+        
+        // Determine other user info
+        let otherUserId = userId;
+        let otherUserInfo = null;
+
+        // If handle is provided instead of userId, find the user
+        if (handle && !userId) {
+          console.log('📌 Using handle to find user');
+          const foundUser = users.find(u => u.handle === handle);
+          if (foundUser) {
+            otherUserId = foundUser.user_id;
+            otherUserInfo = foundUser;
+            console.log('✅ Found user by handle:', foundUser);
+          }
+        } else if (userId) {
+          console.log('📌 Using userId directly');
+          // userId is provided with or without userName/userHandle
+          otherUserInfo = {
+            user_id: userId,
+            name: userName || 'User',
+            handle: userHandle || '@user',
+            username: userHandle?.replace('@', '') || 'user'
+          };
+          console.log('✅ Created user info:', otherUserInfo);
+        }
+
+        console.log('🔍 otherUserId:', otherUserId, 'otherUserInfo:', otherUserInfo);
+
+        if (!otherUserId) {
+          console.error('❌ No otherUserId found');
+          setError('User information is missing');
+          return;
+        }
+
+        setOtherUser(otherUserInfo);
+
+        // Create or get private chat
+        try {
+          console.log('📡 Getting private chat with user:', otherUserId);
+          const chatResponse = await chatAPI.getPrivateChat(otherUserId);
+          console.log('✅ Chat response:', chatResponse);
+          
+          if (chatResponse?.chat?.chat_id) {
+            setChatId(chatResponse.chat.chat_id);
+
+            // Fetch messages
+            try {
+              const messagesResponse = await chatAPI.getMessages(chatResponse.chat.chat_id);
+              if (messagesResponse?.messages) {
+                const formattedMessages = messagesResponse.messages.map(msg => ({
+                  _id: msg.message_id,
+                  text: msg.content,
+                  createdAt: new Date(msg.created_at),
+                  user: {
+                    _id: msg.sender_id,
+                    name: msg.sender_id === currentUser?.user_id ? 'You' : otherUserInfo?.name || 'User',
+                  },
+                  ...(msg.media_url && { image: msg.media_url }),
+                }));
+                setMessages(formattedMessages.reverse());
+              }
+            } catch (msgError) {
+              console.warn('Failed to fetch messages:', msgError);
+              // Continue without messages
+            }
+          }
+        } catch (chatError) {
+          console.error('Failed to create/get chat:', chatError);
+          setError('Failed to load chat. Please try again.');
+        }
+      } catch (error) {
+        console.error('Failed to initialize chat:', error);
+        setError('Failed to load chat. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initChat();
+  }, [handle, userId, userName, userHandle, currentUser]);
+
   // Send message
   const onSend = useCallback(
-    (newMsgs = []) => {
+    async (newMsgs = []) => {
+      try {
+        const msg = newMsgs[0];
+        if (!msg || (!msg.text?.trim() && !msg.image)) return;
+
         if (replyingTo) {
-          newMsgs[0].replyTo = replyingTo;
+          msg.replyTo = replyingTo;
           setReplyingTo(null);
         }
 
-      setMessages(previous => GiftedChat.append(previous, newMsgs));
+        console.log('✉️ Sending message:', msg.text);
 
-      if (!newMsgs[0].image && !newMsgs[0].document) {
-        // Simulated replies
-        /*setTimeout(() => {
-          const replyMessage = {
-            _id: Date.now() + 1,
-            text: "Hello! Ami saba.",
-            createdAt: new Date(),
-            user: { _id: 2, name: user.name, avatar: user.profilePicture },
-          };
-          setMessages(prev => GiftedChat.append(prev, [replyMessage]));
-        }, 1500);
+        // Optimistically add message to UI
+        setMessages(previous => GiftedChat.append(previous, newMsgs));
+        setInputText('');
 
-        setTimeout(() => {
-          const replyMessage2 = {
-            _id: Date.now() + 2,
-            text: 'Hello! Ami mounotaa.',
-            createdAt: new Date(),
-            user: { _id: 2, name: user.name, avatar: user.profilePicture },
-          };
-          setMessages(prev => GiftedChat.append(prev, [replyMessage2]));
-        }, 3000);*/
+        // Send to backend
+        if (chatId) {
+          await chatAPI.sendMessage(chatId, msg.text?.trim(), msg.image);
+        } else {
+          console.warn('⚠️ chatId not ready, message sent locally only');
+        }
+      } catch (error) {
+        console.error('Failed to send message:', error);
+        Alert.alert('Error', 'Failed to send message. Please try again.');
       }
     },
-    [replyingTo, user.name, user.profilePicture]
+    [replyingTo, chatId]
   );
+
+  // Render error state
+  if (error) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity onPress={() => router.back()} style={{marginTop: 20, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#e63e4c', borderRadius: 8}}>
+          <Text style={{color: 'white', fontWeight: 'bold'}}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <Text>Loading chat...</Text>
+      </View>
+    );
+  }
+
+  // Render chat interface
 
 
   const requestLibraryPermission = async () => {
@@ -241,11 +383,11 @@ export default function ChatScreen() {
   // Avatar rendering (no avatar for sender)
   const renderAvatar = (props) => {
     const { user } = props.currentMessage;
-    if (user._id === 1) return null; 
-    if (user.avatar) return <Image source={{ uri: user.avatar }} style={styles.avatar} />;
+    if (user._id === currentUser?.user_id) return null; 
+    if (user.avatar || otherUser?.avatar_url) return <Image source={{ uri: user.avatar || otherUser?.avatar_url }} style={styles.avatar} />;
     return (
       <View style={[styles.avatar, styles.initialsAvatar]}>
-        <Text style={styles.initialsText}>{getInitials(user.name)}</Text>
+        <Text style={styles.initialsText}>{getInitials(user.name || otherUser?.name || 'User')}</Text>
       </View>
     );
   };
@@ -424,33 +566,35 @@ export default function ChatScreen() {
     );
   };
 
+  const renderAccessory = () => {
+    if (!replyingTo) return null;
+    return (
+      <View style={styles.replyContainer}>
+        <Text style={styles.replyLabel}>Replying to:</Text>
+        <Text numberOfLines={1} style={styles.replyText}>
+          {replyingTo.text || 'Media message'}
+        </Text>
+        <TouchableOpacity onPress={() => setReplyingTo(null)}>
+          <Ionicons name="close" size={18} color="#000" />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   const renderInputToolbar = (props) => (
-    <View>
-      {replyingTo && (
-        <View style={styles.replyContainer}>
-          <Text style={styles.replyLabel}>Replying to:</Text>
-          <Text numberOfLines={1} style={styles.replyText}>
-            {replyingTo.text || 'Media message'}
-          </Text>
-          <TouchableOpacity onPress={() => setReplyingTo(null)}>
-            <Ionicons name="close" size={18} color="#000" />
-          </TouchableOpacity>
-        </View>
-      )}
-      <InputToolbar
-        {...props}
-        containerStyle={{
-          backgroundColor: '#fff',
-          paddingVertical: 4,
-          paddingHorizontal: 1,
-          borderTopWidth: 1,
-          borderTopColor: '#ddd',
-          marginBottom: keyboardVisible ? 0 : 30,
-        }}
-        primaryStyle={{ alignItems: 'center' }}
-        renderComposer={renderComposer} 
-      />
-    </View>
+    <InputToolbar
+      {...props}
+      containerStyle={{
+        backgroundColor: '#fff',
+        paddingVertical: 6,
+        paddingHorizontal: 6,
+        borderTopWidth: 1,
+        borderTopColor: '#ddd',
+      }}
+      primaryStyle={{ alignItems: 'center' }}
+      renderComposer={renderComposer}
+      renderAccessory={renderAccessory}
+    />
   );
 
   // Send button
@@ -499,7 +643,11 @@ export default function ChatScreen() {
 
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={tabBarHeight + insets.top}
+    >
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -507,9 +655,9 @@ export default function ChatScreen() {
         </TouchableOpacity>
 
         {/* Avatar or initials */}
-        {user.profilePicture ? (
+        {(otherUser?.profilePicture || otherUser?.avatar_url) ? (
           <Image
-            source={{ uri: user.profilePicture }}
+            source={{ uri: otherUser.profilePicture || otherUser.avatar_url }}
             style={{ width: 40, height: 40, borderRadius: 20, marginRight: 10 }}
           />
         ) : (
@@ -524,13 +672,13 @@ export default function ChatScreen() {
               marginRight: 10,
             }}
           >
-            <Text style={{ color: '#000', fontWeight: 'bold' }}>{getInitials(user.name)}</Text>
+            <Text style={{ color: '#000', fontWeight: 'bold' }}>{getInitials(otherUser?.name || userName || 'User')}</Text>
           </View>
         )}
 
         <View style={{ width: '80%' }}>
-          <Text style={styles.name}>{user.name}</Text>
-          <Text style={styles.handle}>{user.handle}</Text>
+          <Text style={styles.name}>{otherUser?.name || userName || 'User'}</Text>
+          <Text style={styles.handle}>{otherUser?.handle || otherUser?.username || userHandle || '@user'}</Text>
         </View>
 
         <View style={styles.rightIcons}>
@@ -544,7 +692,14 @@ export default function ChatScreen() {
         ref = {chatRef}
         messages={messages}
         onSend={msgs => onSend(msgs)}
-        user={{ _id: 1 }}
+        user={{ _id: currentUser?.user_id || 1 }}
+        text={inputText}
+        onInputTextChanged={setInputText}
+        alwaysShowSend={true}
+        minInputToolbarHeight={56}
+        minComposerHeight={38}
+        maxComposerHeight={120}
+        bottomOffset={tabBarHeight + insets.bottom}
         inverted={true}
         renderBubble={renderBubble}
         renderDay={renderDay}
@@ -571,7 +726,7 @@ export default function ChatScreen() {
           </View>
         </Modal>
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
