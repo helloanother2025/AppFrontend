@@ -151,7 +151,7 @@ const Notifications = () => {
   if (loading) {
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>Loading notifications...</Text>
+        <Text style={styles.loadingText}>Loading notifications...</Text>
       </View>
     );
   }
@@ -417,6 +417,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 22,
     fontWeight: 'bold',
+  },
+  loadingText: {
+    fontSize: 14,
+    fontWeight: 'normal',
+    color: '#666',
   },
   emptySubText: {
     fontSize: 14,

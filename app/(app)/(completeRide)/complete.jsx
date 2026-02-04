@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView'
 import { StyledTitle as Title } from '../../../components/StyledTitle' 
+import { StyledText as Text } from '../../../components/StyledText'
 import { StyledButton as Button } from '../../../components/StyledButton'; 
 import RouteMap from '../../../components/RouteMap'
 import RideCard from '../../../components/RideDisplayCard'

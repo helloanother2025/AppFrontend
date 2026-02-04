@@ -49,7 +49,16 @@ const RideDetails = () => {
 
       <RouteMap ride={ride} />
 
-      <RideDetailsCard ride={ride} ongoing={ride.id <= 2} ></RideDetailsCard>
+      <RideDetailsCard
+        ride={ride}
+        ongoing={(() => {
+          const status = String(ride?.status ?? ride?.currentStatus ?? ride?.current_status ?? '').toLowerCase();
+          const fareStatus = String(ride?.fareStatus ?? '').toLowerCase();
+          if (['cancelled', 'expired'].includes(status)) return false;
+          if (status === 'completed' && fareStatus === 'complete') return false;
+          return true;
+        })()}
+      />
       
     </ScrollView>
   );

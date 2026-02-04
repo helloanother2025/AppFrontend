@@ -14,11 +14,15 @@ const Dash = () => {
   // Combine created and joined rides, filter for ongoing (not completed)
   const allMyRides = [...myRides, ...joinedRides];
   console.log('🚗 Dashboard - myRides:', myRides.length, 'joinedRides:', joinedRides.length);
-  const ongoingRides = allMyRides.filter((r) => 
-    r.status && !['completed', 'cancelled', 'expired'].includes(r.status)
-  );
+  const ongoingRides = allMyRides.filter((r) => {
+    const status = String(r.status ?? r.currentStatus ?? r.current_status ?? '').toLowerCase();
+    const fareStatus = String(r.fareStatus ?? '').toLowerCase();
+    if (['cancelled', 'expired'].includes(status)) return false;
+    if (status === 'completed' && fareStatus === 'complete') return false;
+    return true;
+  });
   console.log('📊 Ongoing rides:', ongoingRides.length);
-  const activeRide = ongoingRides[0] || rides[0];
+  const activeRide = ongoingRides[0] || null;
   
   const router = useRouter();
 

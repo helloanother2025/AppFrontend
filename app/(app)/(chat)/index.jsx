@@ -123,6 +123,11 @@ export default function ChatListScreen() {
         data={chats}
         keyExtractor={(item) => String(item.chatId)}
         contentContainerStyle={styles.listContent}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No messages yet</Text>
+          </View>
+        }
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.chatRow} onPress={() => openChat(item)}>
             {item.otherUser?.avatar_url ? (
@@ -171,6 +176,14 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingVertical: 8,
+  },
+  emptyContainer: {
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  emptyText: {
+    color: '#888',
+    fontSize: 14,
   },
   chatRow: {
     flexDirection: 'row',

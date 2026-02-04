@@ -137,9 +137,18 @@ const AvailableRides = () => {
   const [selectedGender, setSelectedGender] = useState(null);
   const [leaveNow, setLeaveNow] = useState(false);
   const [displayedRides, setDisplayedRides] = useState([]);
+  const [sortRecent, setSortRecent] = useState(false);
 
   const getRideStartDate = (ride) => {
     const raw = ride?.start_time ?? ride?.startTime ?? ride?.start_time_utc ?? ride?.startTimeUtc ?? ride?.dateTime;
+    if (!raw) return null;
+    const parsed = raw instanceof Date ? raw : parseServerDate(raw);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+  };
+
+  const getRideCreatedDate = (ride) => {
+    const raw = ride?.createdAt ?? ride?.created_at ?? ride?.createdAtUtc ?? ride?.created_at_utc;
     if (!raw) return null;
     const parsed = raw instanceof Date ? raw : parseServerDate(raw);
     if (Number.isNaN(parsed.getTime())) return null;
@@ -212,8 +221,20 @@ const AvailableRides = () => {
       });
     }
 
-    // Transport and gender filters (case-insensitive)
+    // Transport, gender, and capacity filters (case-insensitive)
     filtered = filtered.filter((ride) => {
+      const status = String(ride.status ?? ride.currentStatus ?? ride.current_status ?? '').toLowerCase();
+      if (['completed', 'cancelled', 'expired', 'ended'].includes(status)) return false;
+
+      const availableSeats = Number(ride.availableSeats ?? ride.available_seats ?? ride.seats);
+      if (Number.isFinite(availableSeats) && availableSeats <= 0) return false;
+
+      const maxPassengers = Number(ride.totalPassengers ?? 0);
+      const currentPassengers = Array.isArray(ride.partners) ? ride.partners.length : 0;
+      if (maxPassengers > 0 && currentPassengers >= maxPassengers) return false;
+
+      if (maxPassengers > 0 && maxPassengers - currentPassengers <= 0) return false;
+
       if (selectedTransport) {
         const rideTransport = ride.transport ?? ride.transport_mode ?? ride.transportMode;
         if (!rideTransport || rideTransport.toLowerCase() !== selectedTransport.toLowerCase()) return false;
@@ -225,11 +246,19 @@ const AvailableRides = () => {
       return true;
     });
 
+    if (sortRecent) {
+      filtered = [...filtered].sort((a, b) => {
+        const aDate = getRideCreatedDate(a)?.getTime?.() ?? getRideStartDate(a)?.getTime?.() ?? 0;
+        const bDate = getRideCreatedDate(b)?.getTime?.() ?? getRideStartDate(b)?.getTime?.() ?? 0;
+        return bDate - aDate;
+      });
+    }
+
     return filtered;
   };
 
   useEffect(() => {
-    fetchAvailableRides();
+    fetchAvailableRides({ limit: 50 });
   }, [fetchAvailableRides]);
 
   useFocusEffect(
@@ -249,7 +278,7 @@ const AvailableRides = () => {
         setTimeout(() => scrollRef.current.scrollToEnd({ animated: true }), 150);
       }
     })();
-  }, [selectedTransport, selectedGender, date, leaveNow, searchData, availableRides]);
+  }, [selectedTransport, selectedGender, date, leaveNow, sortRecent, searchData, availableRides]);
 
   const onDateChange = (selectedDate) => setDate(selectedDate || date);
 
@@ -269,7 +298,7 @@ const AvailableRides = () => {
   };
 
   const handleSearch = async () => {
-    await fetchAvailableRides(buildFilterParams());
+    await fetchAvailableRides({ limit: 50, ...buildFilterParams() });
     const filtered = await filterRides(availableRides);
     setDisplayedRides(filtered);
     setShowSearch(true);
@@ -284,6 +313,7 @@ const AvailableRides = () => {
     setSelectedGender(null);
     setDate(null);
     setLeaveNow(false);
+    setSortRecent(false);
     setDisplayedRides(availableRides);
   };
 
@@ -324,14 +354,22 @@ const AvailableRides = () => {
           /> 
           <Text style={{marginLeft: 5, color: leaveNow ? '#e63e4c' : '000'}}>Leave now</Text>
         </View>
-         
 
-        <TouchableOpacity
-          style={styles.filterToggle}
-          onPress={() => setShowFilters(!showFilters)}>
-          <FontAwesome6 name="sliders" size={14} color="white" />
-          <Text style={styles.filterToggleText}>Filters</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity
+            style={[styles.filterToggle, sortRecent && styles.filterToggleActive]}
+            onPress={() => setSortRecent(!sortRecent)}>
+            <FontAwesome6 name="clock" size={14} color="white" />
+            <Text style={styles.filterToggleText}>Recent</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.filterToggle}
+            onPress={() => setShowFilters(!showFilters)}>
+            <FontAwesome6 name="sliders" size={14} color="white" />
+            <Text style={styles.filterToggleText}>Filters</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {showFilters && (
@@ -481,6 +519,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 14,
     borderRadius: 16,
+  },
+  filterToggleActive: {
+    backgroundColor: '#e63e4c',
   },
   filterToggleText: {
     color: 'white',

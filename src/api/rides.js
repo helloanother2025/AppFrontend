@@ -197,4 +197,17 @@ export const ridesAPI = {
       throw new Error(message);
     }
   },
+
+  /**
+   * Delete a past ride (creator only)
+   */
+  deleteRide: async (rideId) => {
+    try {
+      const response = await client.delete(`/rides/${rideId}`);
+      return response.data;
+    } catch (error) {
+      const message = handleApiError(error, 'Failed to delete ride');
+      throw new Error(message);
+    }
+  },
 };

@@ -168,6 +168,13 @@ export const RideProvider = ({ children }) => {
     setError(null);
     try {
       const response = await ridesAPI.completeRide(rideId, completionData);
+      const updatedRide = normalizeRide(response?.ride ?? response?.data ?? response);
+      if (updatedRide) {
+        setRides((prev) => prev.map((r) => (String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r)));
+        setMyRides((prev) => prev.map((r) => (String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r)));
+        setJoinedRides((prev) => prev.map((r) => (String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r)));
+        setSelectedRide(updatedRide);
+      }
       // Refresh rides lists to reflect completion
       await Promise.all([fetchMyRides(), fetchJoinedRides()]);
       return response;
@@ -180,14 +187,26 @@ export const RideProvider = ({ children }) => {
     }
   }, [fetchMyRides, fetchJoinedRides]);
 
+  const selectRide = useCallback((ride) => {
+    if (!ride) return;
+    setSelectedRide(normalizeRide(ride));
+  }, []);
+
   const updateRideStatus = useCallback(async (rideId, status) => {
     setLoading(true);
     setError(null);
     try {
       const response = await ridesAPI.updateRideStatus(rideId, status);
+      const updatedRide = normalizeRide(response?.ride ?? response?.data ?? response);
+      if (updatedRide) {
+        setRides((prev) => prev.map((r) => (String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r)));
+        setMyRides((prev) => prev.map((r) => (String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r)));
+        setJoinedRides((prev) => prev.map((r) => (String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r)));
+        setSelectedRide(updatedRide);
+      }
       // Refresh rides lists to reflect status change
       await Promise.all([fetchMyRides(), fetchJoinedRides()]);
-      return response;
+      return updatedRide ?? response;
     } catch (err) {
       console.error('Failed to update ride status:', err);
       setError(err.message || 'Failed to update ride status');
@@ -196,6 +215,27 @@ export const RideProvider = ({ children }) => {
       setLoading(false);
     }
   }, [fetchMyRides, fetchJoinedRides]);
+
+  const deleteRide = useCallback(async (rideId) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await ridesAPI.deleteRide(rideId);
+      setRides((prev) => prev.filter((r) => String(r.id) !== String(rideId)));
+      setMyRides((prev) => prev.filter((r) => String(r.id) !== String(rideId)));
+      setJoinedRides((prev) => prev.filter((r) => String(r.id) !== String(rideId)));
+      if (selectedRide && String(selectedRide.id) === String(rideId)) {
+        setSelectedRide(null);
+      }
+      return response;
+    } catch (err) {
+      console.error('Failed to delete ride:', err);
+      setError(err.message || 'Failed to delete ride');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedRide]);
 
   return (
     <RideContext.Provider
@@ -216,6 +256,8 @@ export const RideProvider = ({ children }) => {
         createRide,
         completeRide,
         updateRideStatus,
+        deleteRide,
+        selectRide,
       }}
     >
       {children}

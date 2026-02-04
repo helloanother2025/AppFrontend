@@ -4,7 +4,7 @@ import React from 'react';
 
 export function StyledButton({ props, title, onPress, style, textStyle, disabled }) {
   return (
-    <TouchableOpacity onPress={onPress} style={[styles.button, style]} disabled={disabled} >
+    <TouchableOpacity onPress={onPress} style={[styles.button, style]} disabled={!!disabled} >
       <Text style={[styles.buttonText, textStyle]}>{title}</Text>
     </TouchableOpacity>
   );

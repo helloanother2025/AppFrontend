@@ -44,6 +44,10 @@ export const normalizeRide = (ride) => {
     const startCoords = normalizeCoords(ride.start.coords) ?? ride.start.coords;
     const destCoords = normalizeCoords(ride.destination.coords) ?? ride.destination.coords;
 
+    const actualFareValue = ride.actual_fare ?? ride.actualFare;
+    const completionTimeValue = ride.completion_time ?? ride.completionTime;
+    const statusValue = ride.status ?? ride.current_status ?? ride.currentStatus;
+
     return {
       ...ride,
       id: ride.id ?? ride.ride_id ?? ride.rideId,
@@ -62,16 +66,23 @@ export const normalizeRide = (ride) => {
       },
       date: startTimeValue ? formatRideDate(startTimeValue) : (ride.date ?? formatRideDate(ride.start_time ?? ride.startTime)),
       routePolyline: ride.routePolyline ?? ride.route_polyline ?? ride.routePolyline,
+      createdAt: ride.createdAt ?? ride.created_at ?? ride.createdAtUtc ?? ride.created_at_utc,
       transport: ride.transport ?? ride.transport_mode ?? ride.transportMode,
       gender: ride.gender ?? ride.gender_preference ?? ride.genderPreference ?? 'Any',
       preferences: ride.preferences ?? ride.preference_notes ?? ride.notes ?? '',
       fare: ride.fare ?? ride.actual_fare ?? ride.actualFare ?? 'TBA',
+      fareStatus:
+        completionTimeValue
+          ? 'complete'
+          : String(statusValue ?? '').toLowerCase() === 'completed'
+          ? 'pending'
+          : null,
       totalPassengers: ride.totalPassengers ?? ride.available_seats ?? ride.availableSeats ?? ride.seats ?? 0,
       partners: Array.isArray(ride.partners) ? ride.partners : Array.isArray(ride.passengers) ? ride.passengers.map((p) => ({
         name: p.name,
         handle: ensureHandle(p.username ?? p.handle, p.username),
       })) : [],
-      status: ride.status ?? ride.current_status ?? ride.currentStatus,
+      status: statusValue,
     };
   }
 
@@ -86,6 +97,10 @@ export const normalizeRide = (ride) => {
   });
 
   const dateParts = formatRideDate(startTimeValue ?? ride.start_time ?? ride.startTime);
+
+  const actualFareValue = ride.actual_fare ?? ride.actualFare;
+  const completionTimeValue = ride.completion_time ?? ride.completionTime;
+  const statusValue = ride.current_status ?? ride.status ?? '';
 
   return {
     id: ride.ride_id ?? ride.id ?? ride.rideId,
@@ -115,7 +130,14 @@ export const normalizeRide = (ride) => {
     preferences: ride.preference_notes ?? ride.notes ?? '',
     gender: ride.gender_preference ?? ride.genderPreference ?? ride.gender ?? 'Any',
     routePolyline: ride.route_polyline ?? ride.routePolyline ?? '',
-    status: ride.current_status ?? ride.status ?? '',
+    fareStatus:
+      completionTimeValue
+        ? 'complete'
+        : String(statusValue ?? '').toLowerCase() === 'completed'
+        ? 'pending'
+        : null,
+    createdAt: ride.created_at ?? ride.createdAt ?? ride.created_at_utc ?? ride.createdAtUtc,
+    status: statusValue,
   };
 };
 
