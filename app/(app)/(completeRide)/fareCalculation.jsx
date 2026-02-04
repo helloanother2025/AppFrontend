@@ -5,14 +5,13 @@ import { StyledText as Text } from '../../../components/StyledText'
 import { StyledTitle as Title } from '../../../components/StyledTitle' 
 import { StyledCardButton as CardButton } from '../../../components/StyledCardButton'
 import { StyledButton as Button } from '../../../components/StyledButton'
-import rides from '../../../data/rideData.json'
 import { useRouter } from 'expo-router';
 import { getDistance } from '../../../src/utils/mapServices'
 import { useRide } from '../../../context/RideContext'
 
 export default function FareCalculation() {
   const { selectedRide, myRides, rides: availableRides, completeRide, loading } = useRide();
-  const currentRide = selectedRide || myRides[0] || availableRides[0] || rides[0];
+  const currentRide = selectedRide || myRides[0] || availableRides[0];
   const router = useRouter();
   const [fareBreakdown, setFareBreakdown] = useState([]);
   const [completing, setCompleting] = useState(false);
@@ -80,14 +79,21 @@ export default function FareCalculation() {
       return;
     }
 
+    const status = String(currentRide?.status ?? currentRide?.currentStatus ?? currentRide?.current_status ?? '').toLowerCase();
+    const fareStatus = String(currentRide?.fareStatus ?? '').toLowerCase();
+    if (status === 'completed' && fareStatus === 'complete') {
+      Alert.alert('Info', 'This ride is already completed.');
+      return;
+    }
+
     setCompleting(true);
     try {
       await completeRide(currentRide.id, {
         actualFare: parseFloat(currentRide.fare || 0),
         completionTime: new Date().toISOString(),
       });
-      Alert.alert('Success', 'Ride completed successfully!');
-      router.push('/dash');
+      Alert.alert('Success', 'Fare payment complete');
+      router.push('/(dashboard)/(rides)/rides');
     } catch (error) {
       Alert.alert('Error', error.message || 'Failed to complete ride');
     } finally {

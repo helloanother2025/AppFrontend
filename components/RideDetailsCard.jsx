@@ -11,9 +11,11 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Octicons from '@expo/vector-icons/Octicons';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
-import users from '../data/userData.json';
 import { joinRequestsAPI } from '../src/api/joinRequests';
 import { useSearch } from '../context/SearchContext';
+import { parseServerDate } from '../src/utils/date';
+import { useUser } from '../context/UserContext';
+import { useRide } from '../context/RideContext';
 
 export default function RideDetailsCard({ ride, ongoing = false, join = false }) {
   const router = useRouter();
@@ -24,6 +26,8 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
   const [joinStatus, setJoinStatus] = useState(null);
   const [isCompleted, setIsCompleted] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  const { currentUser } = useUser();
+  const { selectRide, updateRideStatus } = useRide();
 
   if (!ride) return <Text>No ride data provided.</Text>;
 
@@ -47,9 +51,33 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
   }, [ride?.id, join]);
 
   
-  const findUserByHandle = (handle) => users.find(u => u.handle === handle);
-
-  const creator = findUserByHandle(ride.creator?.handle) || ride.creator || { name: 'Unknown', handle: '@user' };
+  const creator = ride.creator || { name: 'Unknown', handle: '@user' };
+  const maxPassengers = Number(ride.totalPassengers ?? 0);
+  const currentPassengers = Array.isArray(ride.partners) ? ride.partners.length : 0;
+  const isFull = maxPassengers > 0 && currentPassengers >= maxPassengers;
+  const genderPreference = String(ride.gender ?? '').toLowerCase();
+  const userGender = String(currentUser?.gender ?? '').toLowerCase();
+  const isGenderRestricted =
+    (genderPreference === 'male' || genderPreference === 'female') &&
+    userGender &&
+    userGender !== genderPreference;
+  const rideStatus = String(ride?.status ?? ride?.currentStatus ?? ride?.current_status ?? '').toLowerCase();
+  const completionTime = ride?.completion_time ?? ride?.completionTime;
+  const fareStatus = String(ride?.fareStatus ?? '').toLowerCase();
+  const isRideCompleted = rideStatus === 'completed' || !!completionTime;
+  const isFareComplete = fareStatus === 'complete';
+  const isFarePending = fareStatus === 'pending';
+  const creatorId = ride?.creator_id ?? creator?.user_id ?? creator?.id;
+  const currentUserId = currentUser?.user_id ?? currentUser?.id;
+  const isOwnRide = creatorId != null && currentUserId != null && String(creatorId) === String(currentUserId);
+  const rideStartValue = ride?.start_time ?? ride?.startTime ?? ride?.start_time_utc ?? ride?.startTimeUtc ?? ride?.dateTime;
+  const rideStartDate = parseServerDate(rideStartValue);
+  const rideDayLabel = rideStartDate
+    ? rideStartDate.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })
+    : ride?.date?.day;
+  const rideTimeLabel = rideStartDate
+    ? rideStartDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, hourCycle: 'h12' })
+    : ride?.date?.time;
 
   const handleRequest = async () => {
     console.log('🔵 handleRequest called, ride.id:', ride?.id, 'isRequested:', isRequested, 'requesting:', requesting);
@@ -64,9 +92,26 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
       return;
     }
 
+    if (isFull) {
+      Alert.alert('Ride Full', 'This ride has reached the maximum number of partners.');
+      return;
+    }
+
+    if (isGenderRestricted) {
+      Alert.alert('Restricted', 'This ride has a gender preference and cannot accept join requests.');
+      return;
+    }
+
     setRequesting(true);
     console.log('🔷 Setting requesting to true, submitting join request for ride:', ride.id);
     
+    const creatorId = ride?.creator_id ?? ride?.creator?.user_id ?? ride?.creator?.id;
+    const currentUserId = currentUser?.user_id ?? currentUser?.id;
+    if (creatorId != null && currentUserId != null && String(creatorId) !== String(currentUserId)) {
+      Alert.alert('You are not authorized');
+      return;
+    }
+
     try {
       
       // Normalize coordinates to ensure they have both lat/lng and latitude/longitude
@@ -108,9 +153,27 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
     }
   };
 
-  const handleComplete = () => {
-    router.push('/complete')
-    setIsCompleted(true);
+  const handleComplete = async () => {
+    if (isRideCompleted && isFareComplete) {
+      return;
+    }
+
+    try {
+      let updated = ride;
+      if (!isRideCompleted) {
+        updated = await updateRideStatus(ride?.id, 'completed');
+      }
+      selectRide(updated || ride);
+      router.push('/fareCalculation');
+      setIsCompleted(true);
+    } catch (error) {
+      const message = error?.message || 'Failed to complete ride';
+      if (message.toLowerCase().includes('not authorized')) {
+        Alert.alert('You are not authorized');
+      } else {
+        Alert.alert('Error', message);
+      }
+    }
   };
 
   return (
@@ -125,20 +188,20 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
               joinStatus === 'cancelled' ? "Request Cancelled" :
               "Request Sent"
             ) : 
-            "Request to join"
+            isFull ? "Ride Full" : isGenderRestricted ? "Restricted" : "Request to join"
           }
-          style={[{ marginBottom: 20 }, (isRequested || requesting) && { backgroundColor: '#ababab' }]}
+          style={[{ marginBottom: 20 }, (isRequested || requesting || isFull || isGenderRestricted) && { backgroundColor: '#ababab' }]}
           onPress={handleRequest}
-          disabled={isRequested || requesting}
+          disabled={isRequested || requesting || isFull || isGenderRestricted}
         />
       )}
       
       {ongoing && (
         <Button
-          title={isCompleted ? "Ride completed" : "Complete ride"}
-          style={[{ marginBottom: 20 }, isCompleted && { backgroundColor: '#ababab' }]}
+          title={isRideCompleted ? "Calculate fare" : "Complete ride"}
+          style={[{ marginBottom: 20 }, (isRideCompleted && !isFarePending) && { backgroundColor: '#ababab' }]}
           onPress={handleComplete}
-          disabled={isCompleted}
+          disabled={isRideCompleted && !isFarePending}
         />
       )}
 
@@ -157,7 +220,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
       {/* Date/time */}
       <View style={styles.rideRow}>
         <FontAwesome name="clock-o" size={14} color="#888" style={[styles.icon, { marginLeft: 4 }]}/>
-        <Text style={styles.rideText}><Text style={styles.rideText}>{ride.date.day}, {ride.date.time}</Text></Text>
+        <Text style={styles.rideText}><Text style={styles.rideText}>{rideDayLabel}, {rideTimeLabel}</Text></Text>
       </View>
 
       {/* Ride creator */}
@@ -177,7 +240,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
           </View>
         </TouchableOpacity>
 
-        {(join || ongoing) && (
+        {(join || ongoing) && !isOwnRide && (
           <View style={styles.contactRow}>
             <TouchableOpacity 
               style={{ paddingHorizontal: 10, marginRight: 15 }} 
@@ -215,7 +278,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
             <Text style={[styles.handle, styles.rideRow]}>No other passengers.</Text>
           ) : (
             (ride.partners || []).map((partnerData, index) => {
-              const partner = findUserByHandle(partnerData.handle) || partnerData || { name: 'Unknown', handle: '@user' };
+              const partner = partnerData || { name: 'Unknown', handle: '@user' };
               return (
                 <View key={index} style={styles.creatorContainer}>
                   <TouchableOpacity

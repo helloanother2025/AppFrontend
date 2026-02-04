@@ -1,32 +1,36 @@
-import React, { createContext, useContext, useCallback, useState } from 'react';
-import user from '../data/userData.json';
-import ridesFallback from '../data/rideData.json';
+import React, { createContext, useContext, useCallback, useRef, useState } from 'react';
 import { ridesAPI } from '../src/api/rides';
 import { normalizeRideList, normalizeRide } from '../src/utils/rideMapper';
 
 const RideContext = createContext();
 
-export const RideProvider = ({ children }) => {
-  const [rideData, setRideData] = useState({
-    creator: {name: user[0].name, handle: user[0].handle},
-    start: { name: '', coords: null },
-    destination: { name: '', coords: null },
-    transport: '',
-    date: {day: '', time: ''},
-    totalPassengers: 0,
-    fare: '',
-    partners: [],
-    gender: 'Any',
-    preferences: '',
-    routePolyline: ''
-  });
+const getInitialRideData = () => ({
+  creator: { name: '', handle: '' },
+  start: { name: '', coords: null },
+  destination: { name: '', coords: null },
+  transport: '',
+  date: { day: '', time: '' },
+  totalPassengers: 0,
+  fare: '',
+  partners: [],
+  gender: 'Any',
+  preferences: '',
+  routePolyline: '',
+});
 
-  const [rides, setRides] = useState(normalizeRideList(ridesFallback));
+export const RideProvider = ({ children }) => {
+  const [rideData, setRideData] = useState(getInitialRideData());
+
+  const [rides, setRides] = useState([]);
   const [myRides, setMyRides] = useState([]);
   const [joinedRides, setJoinedRides] = useState([]);
   const [selectedRide, setSelectedRide] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const createInFlightRef = useRef(false);
+  const lastCreateKeyRef = useRef(null);
+  const lastCreateAtRef = useRef(0);
+  const lastCreatedRideRef = useRef(null);
 
   const fetchAvailableRides = useCallback(async (filters = {}) => {
     setLoading(true);
@@ -38,10 +42,9 @@ export const RideProvider = ({ children }) => {
       return normalized;
     } catch (err) {
       console.error('Failed to fetch rides:', err);
-      const fallback = normalizeRideList(ridesFallback);
-      setRides(fallback);
+      setRides([]);
       setError(err.message || 'Failed to fetch rides');
-      return fallback;
+      return [];
     } finally {
       setLoading(false);
     }
@@ -57,10 +60,9 @@ export const RideProvider = ({ children }) => {
       return normalized;
     } catch (err) {
       console.error('Failed to fetch my rides:', err);
-      const fallback = normalizeRideList(ridesFallback);
-      setMyRides(fallback);
+      setMyRides([]);
       setError(err.message || 'Failed to fetch my rides');
-      return fallback;
+      return [];
     } finally {
       setLoading(false);
     }
@@ -102,24 +104,49 @@ export const RideProvider = ({ children }) => {
       return ride;
     } catch (err) {
       console.error('Failed to fetch ride details:', err);
-      const fallback = normalizeRide(ridesFallback.find((r) => String(r.id) === String(rideId)) || ridesFallback[0]);
-      setSelectedRide(fallback);
+      setSelectedRide(null);
       setError(err.message || 'Failed to fetch ride details');
-      return fallback;
+      return null;
     } finally {
       setLoading(false);
     }
   }, []);
 
   const createRide = useCallback(async (data) => {
+    const startTimeKey = data?.startTime
+      ? new Date(data.startTime).toISOString().slice(0, 16)
+      : null;
+    const createKey = JSON.stringify({
+      startLocation: data?.startLocation,
+      endLocation: data?.endLocation,
+      startTime: startTimeKey,
+      transportMode: data?.transportMode,
+      availableSeats: data?.availableSeats,
+      fare: data?.fare,
+      rideProvider: data?.rideProvider,
+      genderPreference: data?.genderPreference,
+      notes: data?.notes,
+      routePolyline: data?.routePolyline,
+    });
+
+    const now = Date.now();
+    if (createInFlightRef.current || (lastCreateKeyRef.current === createKey && now - lastCreateAtRef.current < 15000)) {
+      return lastCreatedRideRef.current;
+    }
+
     setLoading(true);
     setError(null);
     try {
+      createInFlightRef.current = true;
+      lastCreateKeyRef.current = createKey;
+      lastCreateAtRef.current = now;
+
       const response = await ridesAPI.createRide(data);
       const created = normalizeRide(response?.ride ?? response);
       if (created) {
-        setRides((prev) => [created, ...prev]);
+        setRides((prev) => (prev.some((r) => String(r.id) === String(created.id)) ? prev : [created, ...prev]));
         setSelectedRide(created);
+        lastCreatedRideRef.current = created;
       }
       return created;
     } catch (err) {
@@ -127,8 +154,13 @@ export const RideProvider = ({ children }) => {
       setError(err.message || 'Failed to create ride');
       throw err;
     } finally {
+      createInFlightRef.current = false;
       setLoading(false);
     }
+  }, []);
+
+  const resetRideData = useCallback(() => {
+    setRideData(getInitialRideData());
   }, []);
 
   const completeRide = useCallback(async (rideId, completionData) => {
@@ -136,6 +168,13 @@ export const RideProvider = ({ children }) => {
     setError(null);
     try {
       const response = await ridesAPI.completeRide(rideId, completionData);
+      const updatedRide = normalizeRide(response?.ride ?? response?.data ?? response);
+      if (updatedRide) {
+        setRides((prev) => prev.map((r) => (String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r)));
+        setMyRides((prev) => prev.map((r) => (String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r)));
+        setJoinedRides((prev) => prev.map((r) => (String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r)));
+        setSelectedRide(updatedRide);
+      }
       // Refresh rides lists to reflect completion
       await Promise.all([fetchMyRides(), fetchJoinedRides()]);
       return response;
@@ -148,14 +187,26 @@ export const RideProvider = ({ children }) => {
     }
   }, [fetchMyRides, fetchJoinedRides]);
 
+  const selectRide = useCallback((ride) => {
+    if (!ride) return;
+    setSelectedRide(normalizeRide(ride));
+  }, []);
+
   const updateRideStatus = useCallback(async (rideId, status) => {
     setLoading(true);
     setError(null);
     try {
       const response = await ridesAPI.updateRideStatus(rideId, status);
+      const updatedRide = normalizeRide(response?.ride ?? response?.data ?? response);
+      if (updatedRide) {
+        setRides((prev) => prev.map((r) => (String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r)));
+        setMyRides((prev) => prev.map((r) => (String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r)));
+        setJoinedRides((prev) => prev.map((r) => (String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r)));
+        setSelectedRide(updatedRide);
+      }
       // Refresh rides lists to reflect status change
       await Promise.all([fetchMyRides(), fetchJoinedRides()]);
-      return response;
+      return updatedRide ?? response;
     } catch (err) {
       console.error('Failed to update ride status:', err);
       setError(err.message || 'Failed to update ride status');
@@ -165,11 +216,33 @@ export const RideProvider = ({ children }) => {
     }
   }, [fetchMyRides, fetchJoinedRides]);
 
+  const deleteRide = useCallback(async (rideId) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await ridesAPI.deleteRide(rideId);
+      setRides((prev) => prev.filter((r) => String(r.id) !== String(rideId)));
+      setMyRides((prev) => prev.filter((r) => String(r.id) !== String(rideId)));
+      setJoinedRides((prev) => prev.filter((r) => String(r.id) !== String(rideId)));
+      if (selectedRide && String(selectedRide.id) === String(rideId)) {
+        setSelectedRide(null);
+      }
+      return response;
+    } catch (err) {
+      console.error('Failed to delete ride:', err);
+      setError(err.message || 'Failed to delete ride');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedRide]);
+
   return (
     <RideContext.Provider
       value={{
         rideData,
         setRideData,
+        resetRideData,
         rides,
         myRides,
         joinedRides,
@@ -183,6 +256,8 @@ export const RideProvider = ({ children }) => {
         createRide,
         completeRide,
         updateRideStatus,
+        deleteRide,
+        selectRide,
       }}
     >
       {children}

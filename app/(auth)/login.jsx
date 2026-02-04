@@ -48,6 +48,7 @@ export default function Login() {
 
   return (
     <ScrollView>
+      <View style={styles.headerSpacer} />
       <Title>Welcome back</Title>
 
       <View style={styles.fieldGroup}>
@@ -88,6 +89,9 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
+  headerSpacer: {
+    height: 50,
+  },
   fieldGroup: {
     width: '100%',
     marginTop: 12,

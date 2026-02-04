@@ -9,8 +9,6 @@ import { StyledCardButton as CardButton } from '../../../components/StyledCardBu
 import Entypo from '@expo/vector-icons/Entypo';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Octicons from '@expo/vector-icons/Octicons';
-import rides from '../../../data/rideData.json'
-import user from '../../../data/userData.json'
 import { useRouter } from 'expo-router'
 import { useRide } from '../../../context/RideContext';
 import { useUser } from '../../../context/UserContext';
@@ -20,7 +18,7 @@ export default function CreateRide() {
   const { setRideData, myRides, fetchMyRides } = useRide();
   const { currentUser } = useUser();
 
-  const recentRides = (myRides && myRides.length ? myRides : rides).slice(0, 3);
+  const recentRides = (myRides && myRides.length ? myRides : []).slice(0, 3);
 
   useEffect(() => {
     fetchMyRides();
@@ -36,8 +34,8 @@ export default function CreateRide() {
           onPress={() => {
             setRideData({
               creator: {
-                name: currentUser?.name || user[0].name,
-                handle: currentUser?.username ? `@${currentUser.username}` : user[0].handle,
+                name: currentUser?.name || '',
+                handle: currentUser?.username ? `@${currentUser.username}` : '',
               },
               start: { name: '', coords: null },
               destination: { name: '', coords: null },
@@ -94,6 +92,10 @@ export default function CreateRide() {
             </View>
           </CardButton>
         ))}
+
+        {recentRides.length === 0 && (
+          <Text style={{ marginTop: 10 }}>No previous rides available.</Text>
+        )}
     </ScrollView>
   )
 }

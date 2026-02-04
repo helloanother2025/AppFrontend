@@ -5,8 +5,6 @@ import { StyledCard as Card} from '../../../components/StyledCard'
 import { StyledLink } from '../../../components/StyledLink'
 import { StyledButton as Button } from '../../../components/StyledButton'
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5'
-import users from '../../../data/userData.json'
-import rides from '../../../data/rideData.json'
 import { useRide } from '../../../context/RideContext'
 import { useUser } from '../../../context/UserContext'
 import React, { useEffect } from 'react'
@@ -16,11 +14,11 @@ const UserProfile = () => {
   const { currentUser, fetchCurrentUser, logout } = useUser();
   const { myRides, joinedRides, fetchMyRides, fetchJoinedRides } = useRide();
   const router = useRouter();
-  const user = currentUser || users[0];
+  const user = currentUser;
 
-  const createdRides = myRides.length ? myRides : (rides.filter(r => r.creator.handle === (user.handle || (user.username ? `@${user.username}` : undefined))));
+  const createdRides = myRides || [];
 
-  const joinedRidesData = joinedRides.length ? joinedRides : (rides.filter(r => r.partners.some(p => p.handle === (user.handle || (user.username ? `@${user.username}` : undefined)))));
+  const joinedRidesData = joinedRides || [];
 
   useEffect(() => {
     fetchCurrentUser();

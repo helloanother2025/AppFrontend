@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { RideProvider } from '../../context/RideContext';
 import { SearchProvider } from '../../context/SearchContext';
 import { UserProvider } from '../../context/UserContext';
+import { ChatProvider } from '../../context/ChatContext';
 import DashboardHeader from '../../components/AppHeader';
 import Entypo from '@expo/vector-icons/Entypo';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -12,7 +13,8 @@ export default function TabsLayout() {
     <SearchProvider>
       <UserProvider>
         <RideProvider>
-          <Tabs
+          <ChatProvider>
+            <Tabs
       screenOptions={{
         header: () => <DashboardHeader />,
         headerShown: true,
@@ -86,9 +88,14 @@ export default function TabsLayout() {
       />
       <Tabs.Screen 
         name="(chat)/chatScreen" 
-        options={{ href: null }} 
+        options={{ href: null, tabBarStyle: { display: 'none' }, headerShown: false }} 
+      />
+      <Tabs.Screen 
+        name="(chat)/index" 
+        options={{ href: null, tabBarStyle: { display: 'none' }, headerShown: false }} 
       />
     </Tabs>
+          </ChatProvider>
         </RideProvider>
       </UserProvider>
     </SearchProvider>

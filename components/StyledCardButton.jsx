@@ -1,7 +1,8 @@
 import { Pressable, StyleSheet } from 'react-native';
 
 export function StyledCardButton(props) {
-  return <Pressable {...props} 
+  const { disabled, ...rest } = props;
+  return <Pressable {...rest} disabled={!!disabled}
     style={({pressed}) =>  [
       styles.card, 
       props.style, 

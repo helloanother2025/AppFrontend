@@ -8,6 +8,7 @@ const storeSession = async ({ token, userId, userUuid }) => {
   }
   console.log('Storing auth session with token:', token.substring(0, 20) + '...');
   await SecureStore.setItemAsync('authToken', token);
+  client.defaults.headers.common.Authorization = `Bearer ${token}`;
   if (userId) {
     await SecureStore.setItemAsync('userId', String(userId));
   }
@@ -59,6 +60,7 @@ export const authAPI = {
     await SecureStore.deleteItemAsync('authToken');
     await SecureStore.deleteItemAsync('userId');
     await SecureStore.deleteItemAsync('userUuid');
+    delete client.defaults.headers.common.Authorization;
   },
 
   getCurrentUser: async () => {

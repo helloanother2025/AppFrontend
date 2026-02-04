@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
 import { StyledText as Text } from './StyledText';
 import { StyledCardButton as CardButton } from './StyledCardButton';
 import { StyledButton as Button } from './StyledButton';
@@ -9,21 +9,142 @@ import Entypo from '@expo/vector-icons/Entypo';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Octicons from '@expo/vector-icons/Octicons';
 import { useRouter } from 'expo-router'; 
+import { joinRequestsAPI } from '../src/api/joinRequests';
+import { useSearch } from '../context/SearchContext';
+import { useUser } from '../context/UserContext';
+import { useRide } from '../context/RideContext';
 
 export default function RideDisplayCard({ ride, join = false, create = false, ongoing = false, onPress }) {
   const [isRequested, setIsRequested] = useState(false);
+  const [joinStatus, setJoinStatus] = useState(null);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [requesting, setRequesting] = useState(false);
 
   const router = useRouter();
+  const { searchData } = useSearch();
+  const { currentUser } = useUser();
+  const { selectRide, updateRideStatus } = useRide();
 
-  const handleRequest = () => {
-    router.push('/joinRequested')
-    setIsRequested(true);
+  useEffect(() => {
+    const checkStatus = async () => {
+      if (ride?.id && join) {
+        try {
+          const response = await joinRequestsAPI.checkJoinStatus(ride.id);
+          if (response.hasRequested) {
+            setIsRequested(true);
+            setJoinStatus(response.status);
+          }
+        } catch (error) {
+          console.error('Failed to check join status:', error);
+        }
+      }
+    };
+    checkStatus();
+  }, [ride?.id, join]);
+
+  const maxPassengers = Number(ride?.totalPassengers ?? 0);
+  const currentPassengers = Array.isArray(ride?.partners) ? ride.partners.length : 0;
+  const isFull = maxPassengers > 0 && currentPassengers >= maxPassengers;
+  const genderPreference = String(ride?.gender ?? ride?.gender_preference ?? '').toLowerCase();
+  const userGender = String(currentUser?.gender ?? '').toLowerCase();
+  const isGenderRestricted =
+    (genderPreference === 'male' || genderPreference === 'female') &&
+    userGender &&
+    userGender !== genderPreference;
+  const rideStatus = String(ride?.status ?? ride?.currentStatus ?? ride?.current_status ?? '').toLowerCase();
+  const completionTime = ride?.completion_time ?? ride?.completionTime;
+  const fareStatus = String(ride?.fareStatus ?? '').toLowerCase();
+  const isRideCompleted = rideStatus === 'completed' || !!completionTime;
+  const isFareComplete = fareStatus === 'complete';
+  const isFarePending = fareStatus === 'pending';
+
+  const handleRequest = async () => {
+    if (!ride?.id) {
+      Alert.alert('Error', 'Ride information missing');
+      return;
+    }
+
+    if (isRequested) {
+      return;
+    }
+
+    if (isFull) {
+      Alert.alert('Ride Full', 'This ride has reached the maximum number of partners.');
+      return;
+    }
+
+    if (isGenderRestricted) {
+      Alert.alert('Restricted', 'This ride has a gender preference and cannot accept join requests.');
+      return;
+    }
+
+    setRequesting(true);
+
+    const creatorId = ride?.creator_id ?? ride?.creator?.user_id ?? ride?.creator?.id;
+    const currentUserId = currentUser?.user_id ?? currentUser?.id;
+    if (creatorId != null && currentUserId != null && String(creatorId) !== String(currentUserId)) {
+      Alert.alert('You are not authorized');
+      return;
+    }
+
+    try {
+      const normalizeCoords = (coords) => {
+        if (!coords) return null;
+        const lat = coords.lat ?? coords.latitude;
+        const lng = coords.lng ?? coords.longitude;
+        return (lat !== undefined && lng !== undefined) ? { lat, lng } : null;
+      };
+
+      const startCoords = normalizeCoords(searchData.start?.coords);
+      const destCoords = normalizeCoords(searchData.destination?.coords);
+
+      await joinRequestsAPI.submitJoinRequest(
+        ride.id,
+        startCoords ? {
+          name: searchData.start?.name || searchData.start?.address || 'Start Location',
+          latitude: startCoords.lat,
+          longitude: startCoords.lng,
+        } : null,
+        destCoords ? {
+          name: searchData.destination?.name || searchData.destination?.address || 'Destination',
+          latitude: destCoords.lat,
+          longitude: destCoords.lng,
+        } : null,
+        searchData.routePolyline || null
+      );
+
+      setIsRequested(true);
+      setJoinStatus('pending');
+      Alert.alert('Success', 'Your request has been sent! Check notifications for updates.');
+      router.push('/joinRequested');
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to submit join request');
+    } finally {
+      setRequesting(false);
+    }
   };
 
-  const handleComplete = () => {
-    router.push('/complete')
-    setIsCompleted(true);
+  const handleComplete = async () => {
+    if (isRideCompleted && isFareComplete) {
+      return;
+    }
+
+    try {
+      let updated = ride;
+      if (!isRideCompleted) {
+        updated = await updateRideStatus(ride?.id, 'completed');
+      }
+      selectRide(updated || ride);
+      router.push('/fareCalculation');
+      setIsCompleted(true);
+    } catch (error) {
+      const message = error?.message || 'Failed to complete ride';
+      if (message.toLowerCase().includes('not authorized')) {
+        Alert.alert('You are not authorized');
+      } else {
+        Alert.alert('Error', message);
+      }
+    }
   };
 
   return (
@@ -90,7 +211,16 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
           <View style={{ width: '33%', alignItems: 'center' }}>
             <Text style={{ fontSize: 12 }}>{join ? 'Seats' : create ? 'Passengers' : 'Participants'}</Text>
             <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>
-              {join ? ride.totalPassengers - ride.partners.length : create ? ride.totalPassengers : ride.partners.length + 1}
+              {join
+                ? Math.max(
+                    0,
+                    Number.isFinite(Number(ride.availableSeats ?? ride.available_seats ?? ride.seats))
+                      ? Number(ride.availableSeats ?? ride.available_seats ?? ride.seats)
+                      : Number(ride.totalPassengers ?? 0) - (Array.isArray(ride.partners) ? ride.partners.length : 0)
+                  )
+                : create
+                ? ride.totalPassengers
+                : (Array.isArray(ride.partners) ? ride.partners.length : 0) + 1}
             </Text>
           </View>
 
@@ -108,19 +238,28 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
 
       {join && (
         <Button
-          style={[{ marginTop: 10 }, isRequested && { backgroundColor: '#ababab' }]}
-          title={isRequested ? "Request sent" : "Request to join"}
+          style={[{ marginTop: 10 }, (isRequested || requesting || isFull || isGenderRestricted) && { backgroundColor: '#ababab' }]}
+          title={
+            requesting ? "Sending..." :
+            isRequested ? (
+              joinStatus === 'accepted' ? "Already Joined" :
+              joinStatus === 'rejected' ? "Request Declined" :
+              joinStatus === 'cancelled' ? "Request Cancelled" :
+              "Request Sent"
+            ) :
+            isFull ? "Ride Full" : isGenderRestricted ? "Restricted" : "Request to join"
+          }
           onPress={handleRequest}
-          disabled={isRequested}
+          disabled={isRequested || requesting || isFull || isGenderRestricted}
         />
       )}
 
       {ongoing && (
         <Button
-          title={isCompleted ? "Ride completed" : "Complete ride"}
-          style={[{ marginTop: 10 }, isCompleted && { backgroundColor: '#ababab' }]}
+          title={isRideCompleted ? "Calculate fare" : "Complete ride"}
+          style={[{ marginTop: 10 }, (isRideCompleted && !isFarePending) && { backgroundColor: '#ababab' }]}
           onPress={handleComplete}
-          disabled={isCompleted}
+          disabled={isRideCompleted && !isFarePending}
         />
       )}
 

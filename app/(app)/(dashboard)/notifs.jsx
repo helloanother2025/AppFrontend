@@ -6,15 +6,25 @@ import React, { useState, useEffect } from 'react';
 import { notificationsAPI } from '../../../src/api/notifications';
 import { joinRequestsAPI } from '../../../src/api/joinRequests';
 import { useRide } from '../../../context/RideContext';
-import notificationsFallback from '../../../data/notificationData.json';
+import { useUser } from '../../../context/UserContext';
+import { useRouter } from 'expo-router';
+import { parseServerDate } from '../../../src/utils/date';
 
 const Notifications = () => {
   const [notificationData, setNotificationData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState({});
   const { fetchMyRides, fetchJoinedRides } = useRide();
+  const { isAuthenticated } = useUser();
+  const router = useRouter();
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      setNotificationData([]);
+      return;
+    }
+
     fetchNotifications();
     
     // Auto-refresh notifications every 10 seconds
@@ -23,20 +33,25 @@ const Notifications = () => {
     }, 10000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [isAuthenticated]);
 
   const fetchNotifications = async () => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      setNotificationData([]);
+      return;
+    }
     setLoading(true);
     try {
       console.log('Fetching notifications...');
       const data = await notificationsAPI.getNotifications('all', 50);
       console.log('Notifications received:', data);
       console.log('Number of notifications:', data.notifications?.length || 0);
-      setNotificationData(data.notifications || notificationsFallback);
+      setNotificationData(data.notifications || []);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
       console.error('Error details:', error.message);
-      setNotificationData(notificationsFallback);
+      setNotificationData([]);
     } finally {
       setLoading(false);
     }
@@ -136,7 +151,7 @@ const Notifications = () => {
   if (loading) {
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>Loading notifications...</Text>
+        <Text style={styles.loadingText}>Loading notifications...</Text>
       </View>
     );
   }
@@ -159,7 +174,7 @@ const Notifications = () => {
           onPress={fetchNotifications}
           disabled={loading}
         >
-          <Text style={styles.refreshText}>{loading ? '⟳' : '↻'} Refresh</Text>
+          <Text style={styles.refreshText}>{loading ? '⟳' : '↻'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -167,19 +182,34 @@ const Notifications = () => {
         const notifId = notification.notification_id || notification.id;
         const isProcessing = processing[notifId];
         const isJoinRequest = notification.type === 'join_request';
+        const requesterName = notification.user_name;
+        const requesterHandle = notification.user_username ? `@${notification.user_username}` : null;
+        const displayMessage = isJoinRequest && requesterName
+          ? `${requesterName} wants to join your ride`
+          : notification.message;
         const timestamp = notification.created_at 
-          ? new Date(notification.created_at).toLocaleString()
+          ? parseServerDate(notification.created_at)?.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, hourCycle: 'h12', month: 'short', day: 'numeric' })
           : notification.timestamp;
 
         return (
-          <CardButton key={notifId}>
+          <CardButton
+            key={notifId}
+            onPress={
+              isJoinRequest && notification.related_user_id
+                ? () => router.push(`/(dashboard)/(rides)/user/${notification.related_user_id}`)
+                : undefined
+            }
+          >
             <View style={styles.notificationContent}>
               {/* Header */}
               <View style={styles.notificationHeader}>
                 <View style={styles.headerLeft}>
                   <Text style={styles.notificationMessage}>
-                    {notification.message}
+                    {displayMessage}
                   </Text>
+                  {isJoinRequest && requesterHandle && (
+                    <Text style={styles.requesterHandle}>{requesterHandle}</Text>
+                  )}
                   <Text style={styles.timestamp}>{timestamp}</Text>
                 </View>
                 <TouchableOpacity
@@ -200,7 +230,7 @@ const Notifications = () => {
                   )}
                   <Text style={styles.rideDetails}>
                     {notification.ride_transport || notification.ride?.transport || 'Ride'} • {notification.ride_start_time 
-                      ? new Date(notification.ride_start_time).toLocaleDateString()
+                      ? parseServerDate(notification.ride_start_time)?.toLocaleDateString()
                       : (notification.ride?.date || '')}
                   </Text>
                 </View>
@@ -254,20 +284,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 15,
     marginBottom: 20,
+    columnGap: 148,
   },
   title: {
     fontWeight: 'bold',
     fontSize: 22,
   },
   refreshButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    width: 32,
+    height: 32,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
     backgroundColor: '#e0e0e0',
-    borderRadius: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#cfcfcf',
+    marginLeft: 'auto',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   refreshText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#666',
   },
   notificationContent: {
     width: '100%',
@@ -290,6 +329,11 @@ const styles = StyleSheet.create({
   timestamp: {
     fontSize: 12,
     color: '#666',
+  },
+  requesterHandle: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
   },
   rideInfo: {
     marginBottom: 15,
@@ -320,7 +364,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   acceptButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#000',
   },
   declineButton: {
     backgroundColor: '#F44336',
@@ -373,6 +417,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 22,
     fontWeight: 'bold',
+  },
+  loadingText: {
+    fontSize: 14,
+    fontWeight: 'normal',
+    color: '#666',
   },
   emptySubText: {
     fontSize: 14,

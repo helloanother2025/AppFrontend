@@ -10,13 +10,16 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import * as Animatable from 'react-native-animatable';
 import { Audio } from 'expo-audio';
 import { Video } from 'expo-video';
-import users from '../../../data/userData.json';
 import * as Linking from 'expo-linking';
 import { StyledText as Text } from '../../../components/StyledText';
 import { chatAPI } from '../../../src/api/chat';
+import { usersAPI } from '../../../src/api/users';
 import { useUser } from '../../../context/UserContext';
+import { useChat } from '../../../context/ChatContext';
+import { useFocusEffect } from '@react-navigation/native';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { parseServerDate } from '../../../src/utils/date';
 
 
 const SwipeableBubble = ({ children, message, onReply, position }) => {
@@ -60,15 +63,16 @@ const SwipeableBubble = ({ children, message, onReply, position }) => {
 
 export default function ChatScreen() {
   const router = useRouter();
-  const { handle, userId, userName, userHandle } = useLocalSearchParams();
+  const { handle, userId, userName, userHandle, chatId: chatIdParam } = useLocalSearchParams();
   const { currentUser } = useUser();
+  const { fetchChats } = useChat();
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const flatListRef = useRef(null);
   const chatRef = useRef(null);
   const animRefs = useRef({});
 
-  const [chatId, setChatId] = useState(null);
+  const [chatId, setChatId] = useState(chatIdParam || null);
   const [otherUser, setOtherUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -107,7 +111,7 @@ export default function ChatScreen() {
           const formattedMessages = messagesResponse.messages.map(msg => ({
             _id: msg.message_id,
             text: msg.content,
-            createdAt: new Date(msg.created_at),
+            createdAt: parseServerDate(msg.created_at),
             user: {
               _id: msg.sender_id,
               name: msg.sender_id === currentUser?.user_id ? 'You' : otherUser?.name || 'User',
@@ -132,7 +136,20 @@ export default function ChatScreen() {
     };
   }, [chatId, currentUser?.user_id, otherUser?.name]);
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchChats();
+      return () => {};
+    }, [fetchChats])
+  );
+
   // Initialize chat with backend
+  useEffect(() => {
+    if (chatIdParam) {
+      setChatId(chatIdParam);
+    }
+  }, [chatIdParam]);
+
   useEffect(() => {
     const initChat = async () => {
       try {
@@ -143,14 +160,25 @@ export default function ChatScreen() {
         let otherUserId = userId;
         let otherUserInfo = null;
 
-        // If handle is provided instead of userId, find the user
+        // If handle is provided instead of userId, resolve from backend
         if (handle && !userId) {
           console.log('📌 Using handle to find user');
-          const foundUser = users.find(u => u.handle === handle);
-          if (foundUser) {
-            otherUserId = foundUser.user_id;
-            otherUserInfo = foundUser;
-            console.log('✅ Found user by handle:', foundUser);
+          const normalizedHandle = handle.startsWith('@') ? handle.slice(1) : handle;
+          try {
+            const profile = await usersAPI.getUserProfile(normalizedHandle);
+            if (profile?.user_id) {
+              otherUserId = profile.user_id;
+              otherUserInfo = {
+                user_id: profile.user_id,
+                name: profile.name,
+                handle: profile.username ? `@${profile.username}` : handle,
+                username: profile.username || normalizedHandle,
+                avatar_url: profile.avatar_url,
+              };
+              console.log('✅ Found user by handle (API):', profile);
+            }
+          } catch (err) {
+            console.warn('Failed to resolve user by handle from API:', err?.message);
           }
         } else if (userId) {
           console.log('📌 Using userId directly');
@@ -174,23 +202,87 @@ export default function ChatScreen() {
 
         setOtherUser(otherUserInfo);
 
-        // Create or get private chat
-        try {
-          console.log('📡 Getting private chat with user:', otherUserId);
-          const chatResponse = await chatAPI.getPrivateChat(otherUserId);
-          console.log('✅ Chat response:', chatResponse);
-          
-          if (chatResponse?.chat?.chat_id) {
-            setChatId(chatResponse.chat.chat_id);
+        // If a chatId is provided, load chat details and history directly
+        if (chatIdParam) {
+          try {
+            const details = await chatAPI.getChat(chatIdParam);
+            const participants = details?.participants || [];
+            const other = participants.find(p => p.participant_id !== currentUser?.user_id);
 
-            // Fetch messages
+            if (other) {
+              setOtherUser({
+                user_id: other.participant_id,
+                name: other.name,
+                handle: other.username ? `@${other.username}` : '@user',
+                username: other.username || 'user',
+                phone: other.phone || null,
+                avatar_url: other.avatar_url,
+              });
+            }
+
+            const messagesResponse = await chatAPI.getMessages(chatIdParam);
+            if (messagesResponse?.messages) {
+              const formattedMessages = messagesResponse.messages.map(msg => ({
+                _id: msg.message_id,
+                text: msg.content,
+                createdAt: parseServerDate(msg.created_at),
+                user: {
+                  _id: msg.sender_id,
+                  name: msg.sender_id === currentUser?.user_id ? 'You' : other?.name || 'User',
+                },
+                ...(msg.media_url && { image: msg.media_url }),
+              }));
+              setMessages(formattedMessages.reverse());
+            }
+
+            return;
+          } catch (chatLoadError) {
+            console.error('Failed to load chat by chatId:', chatLoadError);
+          }
+        }
+
+        // Only load existing chat (do not create a new one until a message is sent)
+        try {
+          const list = await chatAPI.getChats();
+          const chats = list?.chats || [];
+
+          let existingChatId = null;
+          for (const c of chats) {
             try {
-              const messagesResponse = await chatAPI.getMessages(chatResponse.chat.chat_id);
+              const details = await chatAPI.getChat(c.chat_id);
+              const participants = details?.participants || [];
+              const hasOther = participants.some(
+                p => String(p.participant_id) === String(otherUserId)
+              );
+              if (hasOther) {
+                existingChatId = c.chat_id;
+                const other = participants.find(p => p.participant_id !== currentUser?.user_id);
+                if (other) {
+                  setOtherUser({
+                    user_id: other.participant_id,
+                    name: other.name,
+                    handle: other.username ? `@${other.username}` : '@user',
+                    username: other.username || 'user',
+                    phone: other.phone || null,
+                    avatar_url: other.avatar_url,
+                  });
+                }
+                break;
+              }
+            } catch (detailsError) {
+              // ignore a single chat failure
+            }
+          }
+
+          if (existingChatId) {
+            setChatId(existingChatId);
+            try {
+              const messagesResponse = await chatAPI.getMessages(existingChatId);
               if (messagesResponse?.messages) {
                 const formattedMessages = messagesResponse.messages.map(msg => ({
                   _id: msg.message_id,
                   text: msg.content,
-                  createdAt: new Date(msg.created_at),
+                  createdAt: parseServerDate(msg.created_at),
                   user: {
                     _id: msg.sender_id,
                     name: msg.sender_id === currentUser?.user_id ? 'You' : otherUserInfo?.name || 'User',
@@ -198,15 +290,14 @@ export default function ChatScreen() {
                   ...(msg.media_url && { image: msg.media_url }),
                 }));
                 setMessages(formattedMessages.reverse());
+                fetchChats();
               }
             } catch (msgError) {
               console.warn('Failed to fetch messages:', msgError);
-              // Continue without messages
             }
           }
         } catch (chatError) {
-          console.error('Failed to create/get chat:', chatError);
-          setError('Failed to load chat. Please try again.');
+          console.warn('Failed to check existing chats:', chatError);
         }
       } catch (error) {
         console.error('Failed to initialize chat:', error);
@@ -237,18 +328,31 @@ export default function ChatScreen() {
         setMessages(previous => GiftedChat.append(previous, newMsgs));
         setInputText('');
 
-        // Send to backend
-        if (chatId) {
-          await chatAPI.sendMessage(chatId, msg.text?.trim(), msg.image);
+        // Ensure chat exists before sending
+        let activeChatId = chatId;
+        if (!activeChatId) {
+          const targetUserId = otherUser?.user_id || userId;
+          if (!targetUserId) {
+            throw new Error('Chat not ready. Please try again.');
+          }
+          const chatResponse = await chatAPI.getPrivateChat(targetUserId);
+          if (chatResponse?.chat?.chat_id) {
+            activeChatId = chatResponse.chat.chat_id;
+            setChatId(activeChatId);
+          }
+        }
+
+        if (activeChatId) {
+          await chatAPI.sendMessage(activeChatId, msg.text?.trim(), msg.image);
         } else {
-          console.warn('⚠️ chatId not ready, message sent locally only');
+          throw new Error('Chat not ready. Please try again.');
         }
       } catch (error) {
         console.error('Failed to send message:', error);
         Alert.alert('Error', 'Failed to send message. Please try again.');
       }
     },
-    [replyingTo, chatId]
+    [replyingTo, chatId, otherUser?.user_id, userId]
   );
 
   // Render error state
@@ -455,7 +559,7 @@ export default function ChatScreen() {
 
   // Day label
   const renderDay = (props) => {
-    const messageDate = new Date(props.currentMessage.createdAt);
+    const messageDate = parseServerDate(props.currentMessage.createdAt) || new Date(props.currentMessage.createdAt);
     const today = new Date();
     const yesterday = new Date();
     yesterday.setDate(today.getDate() - 1);
@@ -465,6 +569,22 @@ export default function ChatScreen() {
     return (
       <View style={styles.dateSeparator}>
         <Text style={styles.dateText}>{label}</Text>
+      </View>
+    );
+  };
+
+  const renderTime = (props) => {
+    const createdAt = parseServerDate(props.currentMessage?.createdAt)
+      || (props.currentMessage?.createdAt instanceof Date ? props.currentMessage.createdAt : new Date(props.currentMessage?.createdAt));
+
+    if (!createdAt || Number.isNaN(createdAt.getTime())) return null;
+
+    const timeText = createdAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, hourCycle: 'h12' });
+    const isRight = props.position === 'right';
+
+    return (
+      <View style={{ marginTop: 2, marginRight: 4 }}>
+        <Text style={isRight ? styles.sentTime : styles.receivedTime}>{timeText}</Text>
       </View>
     );
   };
@@ -645,8 +765,8 @@ export default function ChatScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={tabBarHeight + insets.top}
+      behavior="padding"
+      keyboardVerticalOffset={-28}
     >
       {/* Header */}
       <View style={styles.header}>
@@ -682,7 +802,26 @@ export default function ChatScreen() {
         </View>
 
         <View style={styles.rightIcons}>
-          <FontAwesome name="phone" size={22} color="#000" style={styles.icon} />
+          <TouchableOpacity onPress={async () => {
+            try {
+              const phone = otherUser?.phone;
+              if (!phone) {
+                Alert.alert('No phone number', 'This user has no phone number on file.');
+                return;
+              }
+              const url = `tel:${phone}`;
+              const canOpen = await Linking.canOpenURL(url);
+              if (!canOpen) {
+                Alert.alert('Cannot place call', 'Calling is not supported on this device.');
+                return;
+              }
+              await Linking.openURL(url);
+            } catch (err) {
+              Alert.alert('Error', 'Failed to start the call.');
+            }
+          }}>
+            <FontAwesome name="phone" size={22} color="#000" style={styles.icon} />
+          </TouchableOpacity>
           <Ionicons name="ellipsis-vertical" size={22} color="#000" style={styles.icon} />
         </View>
       </View>
@@ -695,14 +834,16 @@ export default function ChatScreen() {
         user={{ _id: currentUser?.user_id || 1 }}
         text={inputText}
         onInputTextChanged={setInputText}
+        isKeyboardInternallyHandled={false}
         alwaysShowSend={true}
         minInputToolbarHeight={56}
         minComposerHeight={38}
         maxComposerHeight={120}
-        bottomOffset={tabBarHeight + insets.bottom}
+        bottomOffset={0}
         inverted={true}
         renderBubble={renderBubble}
         renderDay={renderDay}
+        renderTime={renderTime}
         renderAvatar={renderAvatar}
         showUserAvatar={false} 
         renderInputToolbar={renderInputToolbar}
@@ -794,6 +935,16 @@ const styles = StyleSheet.create({
   receivedText: {
     color: '#000',
     fontSize: 16,
+  },
+  sentTime: {
+    color: '#ffffffff',
+    fontSize: 11,
+    textAlign: 'right',
+  },
+  receivedTime: {
+    color: '#777',
+    fontSize: 11,
+    textAlign: 'right',
   },
   dateSeparator: {
     alignItems: 'center',

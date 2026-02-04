@@ -27,4 +27,9 @@ export const usersAPI = {
     const response = await client.get(`/users/${userId}/ratings`);
     return response.data;
   },
+
+  getUserRideStats: async (identifier) => {
+    const response = await client.get(`/users/${identifier}/ride-stats`);
+    return response.data;
+  },
 };
