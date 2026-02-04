@@ -48,7 +48,7 @@ export const reverseGeocode = async (latitude, longitude) => {
 export const searchPlaces = async (query) => {
   try {
     // Accept-Language: en forces English results from OpenStreetMap
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=10&countrycodes=bd&accept-language=en`;
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=20&countrycodes=bd&accept-language=en`;
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'RideShare-App',

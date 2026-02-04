@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, StyleSheet, BackHandler } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StyledText as Text } from '../../../components/StyledText';
 import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView'; 
@@ -10,15 +10,20 @@ import RouteMap from '../../../components/RouteMap';
 
 
 export default function RideCreated() {
-  const { rideData, createRide } = useRide();
+  const { rideData, createRide, resetRideData } = useRide();
   const router = useRouter();
   const [createdRide, setCreatedRide] = useState(null);
   const [creationError, setCreationError] = useState(null);
+  const hasSubmittedRef = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
 
     const submitRide = async () => {
+      if (hasSubmittedRef.current) {
+        return;
+      }
+
       if (!rideData?.start?.coords || !rideData?.destination?.coords) {
         return;
       }
@@ -29,6 +34,7 @@ export default function RideCreated() {
       }
 
       try {
+        hasSubmittedRef.current = true;
         const startTime = new Date().toISOString();
         
         // Map transport modes to database enum values
@@ -67,9 +73,11 @@ export default function RideCreated() {
         const created = await createRide(payload);
         if (isMounted) {
           setCreatedRide(created);
+          resetRideData();
         }
       } catch (error) {
         if (isMounted) {
+          hasSubmittedRef.current = false;
           setCreationError(error.message || 'Failed to create ride');
         }
       }
@@ -81,6 +89,16 @@ export default function RideCreated() {
       isMounted = false;
     };
   }, [createRide, rideData]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      router.replace('/(app)/(dashboard)/dash');
+      return true;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [router]);
 
   return (
     <ScrollView>

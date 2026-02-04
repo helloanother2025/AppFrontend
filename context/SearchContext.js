@@ -1,18 +1,23 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useCallback, useState } from 'react';
 
 const SearchContext = createContext();
 
+const getInitialSearchData = () => ({
+  start: { name: '', coords: null },
+  destination: { name: '', coords: null },
+  transport: '',
+  date: { day: '', time: '' },
+  gender: '',
+});
+
 export const SearchProvider = ({ children }) => {
-  const [searchData, setSearchData] = useState({
-    start: { name: '', coords: null },
-    destination: { name: '', coords: null },
-    transport: '',
-    date: {day: '', time: ''},
-    gender: '',
-  });
+  const [searchData, setSearchData] = useState(getInitialSearchData());
+  const resetSearchData = useCallback(() => {
+    setSearchData(getInitialSearchData());
+  }, []);
 
   return (
-    <SearchContext.Provider value={{ searchData, setSearchData }}>
+    <SearchContext.Provider value={{ searchData, setSearchData, resetSearchData }}>
       {children}
     </SearchContext.Provider>
   );

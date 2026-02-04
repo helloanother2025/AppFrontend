@@ -5,24 +5,23 @@ import { StyledCard as Card} from '../../../../../components/StyledCard'
 import { StyledLink } from '../../../../../components/StyledLink'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import users from '../../../../../data/userData.json'
-import rides from '../../../../../data/rideData.json'
 import React, { useEffect, useState } from 'react'
 import { useRide } from '../../../../../context/RideContext'
 import { useUser } from '../../../../../context/UserContext'
+import { usersAPI } from '../../../../../src/api/users'
 
 const UserDetails = () => {
   const { handle } = useLocalSearchParams();
   const { rides: availableRides } = useRide();
   const { fetchUserProfile } = useUser();
   const [user, setUser] = useState(null);
+  const [rideStats, setRideStats] = useState({ createdCount: 0, joinedCount: 0 });
 
   const targetHandle = Array.isArray(handle) ? handle[0] : handle;
-  const fallbackUser = users.find(u => u.handle === targetHandle);
+  const normalizedHandle = targetHandle?.startsWith('@') ? targetHandle.slice(1) : targetHandle;
+  const createdRides = (availableRides || []).filter(r => r.creator.handle === user?.handle);
 
-  const createdRides = (availableRides.length ? availableRides : rides).filter(r => r.creator.handle === (user?.handle || fallbackUser?.handle));
-
-  const joinedRides = (availableRides.length ? availableRides : rides).filter(r => r.partners.some(p => p.handle === (user?.handle || fallbackUser?.handle)));
+  const joinedRides = (availableRides || []).filter(r => r.partners.some(p => p.handle === user?.handle));
 
   const router = useRouter();
   
@@ -30,33 +29,36 @@ const UserDetails = () => {
     let isMounted = true;
     (async () => {
       try {
-        const profile = await fetchUserProfile(targetHandle);
+        const profile = await fetchUserProfile(normalizedHandle || targetHandle);
         if (isMounted) {
           setUser({
             ...profile,
             handle: profile?.username ? `@${profile.username}` : profile?.handle,
           });
+          if (profile?.user_id) {
+            const stats = await usersAPI.getUserRideStats(profile.user_id);
+            if (isMounted) setRideStats(stats);
+          }
         }
       } catch (error) {
         if (isMounted) {
-          setUser(fallbackUser || null);
+          setUser(null);
         }
       }
     })();
     return () => {
       isMounted = false;
     };
-  }, [fetchUserProfile, targetHandle, fallbackUser]);
+  }, [fetchUserProfile, normalizedHandle, targetHandle]);
 
-  if (!user && !fallbackUser) {
+  if (!user) {
     return (
       <View style={styles.centered}>
         <Text style={styles.errorText}>User not found</Text>
       </View>
     );
   }
-
-  const profile = user || fallbackUser;
+  const profile = user;
 
   return (
     <ScrollView>
@@ -80,13 +82,13 @@ const UserDetails = () => {
 
         {/* stats */}
         <View style={styles.statBox}>
-        <View style={{alignItems: 'center'}}>
-            <Text style={styles.statValue}>{createdRides.length}</Text>
+          <View style={{alignItems: 'center'}}>
+            <Text style={styles.statValue}>{rideStats.createdCount ?? createdRides.length}</Text>
             <Text style={{fontSize: 11}}>Rides Created</Text>
           </View>
           
           <View style={{alignItems: 'center'}}>
-            <Text style={styles.statValue}>{joinedRides.length}</Text>
+            <Text style={styles.statValue}>{rideStats.joinedCount ?? joinedRides.length}</Text>
             <Text style={{fontSize: 11}}>Rides Joined</Text>
           </View>
           

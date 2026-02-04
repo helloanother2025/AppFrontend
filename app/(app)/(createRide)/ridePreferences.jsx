@@ -28,7 +28,7 @@ export default function RidePreferences() {
       totalPassengers: preferences.numPartners,
       preferences: preferences.otherNotes,
     });
-    router.push('/rideCreated');
+    router.replace('/rideCreated');
   };
   
 

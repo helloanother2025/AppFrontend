@@ -5,14 +5,13 @@ import { StyledText as Text } from '../../../components/StyledText'
 import { StyledTitle as Title } from '../../../components/StyledTitle' 
 import { StyledCardButton as CardButton } from '../../../components/StyledCardButton'
 import { StyledButton as Button } from '../../../components/StyledButton'
-import rides from '../../../data/rideData.json'
 import { useRouter } from 'expo-router';
 import { getDistance } from '../../../src/utils/mapServices'
 import { useRide } from '../../../context/RideContext'
 
 export default function FareCalculation() {
   const { selectedRide, myRides, rides: availableRides, completeRide, loading } = useRide();
-  const currentRide = selectedRide || myRides[0] || availableRides[0] || rides[0];
+  const currentRide = selectedRide || myRides[0] || availableRides[0];
   const router = useRouter();
   const [fareBreakdown, setFareBreakdown] = useState([]);
   const [completing, setCompleting] = useState(false);

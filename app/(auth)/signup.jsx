@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StyledText as Text } from '../../components/StyledText';
 import { StyledTitle as Title } from '../../components/StyledTitle';
 import { StyledButton as Button } from '../../components/StyledButton';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyledScrollView as ScrollView } from '../../components/StyledScrollView';
 import { authAPI } from '../../src/api/auth';
 import { usersAPI } from '../../src/api/users';
 import * as SecureStore from 'expo-secure-store';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function Signup() {
   const router = useRouter();
@@ -22,8 +24,13 @@ export default function Signup() {
   const [department, setDepartment] = useState('');
   const [address, setAddress] = useState('');
   const [fb, setFb] = useState('');
+  const [profileImage, setProfileImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [step, setStep] = useState(1);
+
+  const goNext = () => setStep((s) => Math.min(5, s + 1));
+  const goBack = () => setStep((s) => Math.max(1, s - 1));
 
   const handleSignup = async () => {
     setError('');
@@ -87,131 +94,240 @@ export default function Signup() {
     }
   };
 
+  const requestCameraPermission = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission required', 'Please allow camera access.');
+      return false;
+    }
+    return true;
+  };
+
+  const requestLibraryPermission = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission required', 'Please allow photo library access.');
+      return false;
+    }
+    return true;
+  };
+
+  const openCamera = async () => {
+    const ok = await requestCameraPermission();
+    if (!ok) return;
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.length > 0) {
+      setProfileImage(result.assets[0].uri);
+    }
+  };
+
+  const openGallery = async () => {
+    const ok = await requestLibraryPermission();
+    if (!ok) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.length > 0) {
+      setProfileImage(result.assets[0].uri);
+    }
+  };
+
   return (
     <ScrollView>
+      <View style={styles.headerSpacer} />
       <Title>Create account</Title>
 
-      <View style={styles.row}>
-        <View style={[styles.fieldGroup, styles.half]}>
-          <Text style={styles.label}>First name</Text>
-          <TextInput
-            style={styles.input}
-            value={firstName}
-            onChangeText={setFirstName}
-            placeholder="First"
-          />
-        </View>
-        <View style={[styles.fieldGroup, styles.half, styles.halfRight]}>
-          <Text style={styles.label}>Last name</Text>
-          <TextInput
-            style={styles.input}
-            value={lastName}
-            onChangeText={setLastName}
-            placeholder="Last"
-          />
-        </View>
-      </View>
+      {step === 1 && (
+        <>
+          <View style={styles.row}>
+            <View style={[styles.fieldGroup, styles.half]}>
+              <Text style={styles.label}>First name</Text>
+              <TextInput
+                style={styles.input}
+                value={firstName}
+                onChangeText={setFirstName}
+                placeholder="First"
+              />
+            </View>
+            <View style={[styles.fieldGroup, styles.half, styles.halfRight]}>
+              <Text style={styles.label}>Last name</Text>
+              <TextInput
+                style={styles.input}
+                value={lastName}
+                onChangeText={setLastName}
+                placeholder="Last"
+              />
+            </View>
+          </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Phone</Text>
-        <TextInput
-          style={styles.input}
-          value={phone}
-          onChangeText={setPhone}
-          keyboardType="phone-pad"
-          placeholder="01XXXXXXXXX"
-        />
-      </View>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Phone</Text>
+            <TextInput
+              style={styles.input}
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              placeholder="01XXXXXXXXX"
+            />
+          </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          placeholder="you@example.com"
-        />
-      </View>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              placeholder="you@example.com"
+            />
+          </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Password</Text>
-        <TextInput
-          style={styles.input}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          placeholder="••••••••"
-        />
-      </View>
+          <View style={styles.stepRow}>
+            <Button title="Next" onPress={goNext} style={styles.stepButton} />
+          </View>
+        </>
+      )}
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Confirm password</Text>
-        <TextInput
-          style={styles.input}
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-          placeholder="••••••••"
-        />
-      </View>
+      {step === 2 && (
+        <>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              placeholder="••••••••"
+            />
+          </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Gender</Text>
-        <TextInput
-          style={styles.input}
-          value={gender}
-          onChangeText={setGender}
-          placeholder="Male / Female / Other"
-        />
-      </View>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Confirm Password</Text>
+            <TextInput
+              style={styles.input}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              placeholder="••••••••"
+            />
+          </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>University</Text>
-        <TextInput
-          style={styles.input}
-          value={university}
-          onChangeText={setUniversity}
-          placeholder="Your university"
-        />
-      </View>
+          <View style={styles.stepRow}>
+            <Button title="Back" onPress={goBack} style={styles.stepButton} />
+            <Button title="Next" onPress={goNext} style={styles.stepButton} />
+          </View>
+        </>
+      )}
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Department</Text>
-        <TextInput
-          style={styles.input}
-          value={department}
-          onChangeText={setDepartment}
-          placeholder="Your department"
-        />
-      </View>
+      {step === 3 && (
+        <>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Gender</Text>
+            <View style={styles.radioRow}>
+              {['Male', 'Female', 'Other'].map((opt) => (
+                <TouchableOpacity
+                  key={opt}
+                  style={[styles.radioPill, gender === opt && styles.radioPillActive]}
+                  onPress={() => setGender(opt)}
+                >
+                  <Text style={[styles.radioText, gender === opt && styles.radioTextActive]}>{opt}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Address</Text>
-        <TextInput
-          style={styles.input}
-          value={address}
-          onChangeText={setAddress}
-          placeholder="Your address"
-        />
-      </View>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>University</Text>
+            <TextInput
+              style={styles.input}
+              value={university}
+              onChangeText={setUniversity}
+              placeholder="Your university"
+            />
+          </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Facebook</Text>
-        <TextInput
-          style={styles.input}
-          value={fb}
-          onChangeText={setFb}
-          placeholder="Facebook profile"
-        />
-      </View>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Department</Text>
+            <TextInput
+              style={styles.input}
+              value={department}
+              onChangeText={setDepartment}
+              placeholder="Your department"
+            />
+          </View>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+          <View style={styles.stepRow}>
+            <Button title="Back" onPress={goBack} style={styles.stepButton} />
+            <Button title="Next" onPress={goNext} style={styles.stepButton} />
+          </View>
+        </>
+      )}
 
-      <Button title={loading ? 'Creating account...' : 'Sign Up'} onPress={handleSignup} disabled={loading} style={styles.button} />
+      {step === 4 && (
+        <>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Facebook (optional)</Text>
+            <TextInput
+              style={styles.input}
+              value={fb}
+              onChangeText={setFb}
+              placeholder="facebook.com/username"
+            />
+          </View>
 
-      {loading && <ActivityIndicator size="small" color="#e63e4c" />}
+          <View style={styles.stepRow}>
+            <Button title="Back" onPress={goBack} style={styles.stepButton} />
+            <Button title="Next" onPress={goNext} style={styles.stepButton} />
+          </View>
+        </>
+      )}
+
+      {step === 5 && (
+        <>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.profileTitle}>Profile pic</Text>
+            <View style={styles.profilePicWrapper}>
+              <View style={styles.profilePicCircle}>
+                {profileImage ? (
+                  <Image source={{ uri: profileImage }} style={styles.profilePicImage} />
+                ) : (
+                  <Ionicons name="person" size={112} color="#888" />
+                )}
+              </View>
+            </View>
+
+            <View style={styles.profileActions}>
+              <TouchableOpacity style={styles.profileActionButton} onPress={openCamera}>
+                <Ionicons name="camera" size={22} color="#333" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.profileActionButton} onPress={openGallery}>
+                <Ionicons name="image" size={22} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.skipText}>Skip for now</Text>
+          </View>
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <View style={styles.stepRow}>
+            <Button title="Back" onPress={goBack} style={styles.stepButton} />
+            <Button
+              title={loading ? '...' : '→'}
+              onPress={handleSignup}
+              disabled={loading}
+              style={styles.stepButton}
+            />
+          </View>
+
+          {loading && <ActivityIndicator size="small" color="#e63e4c" />}
+        </>
+      )}
 
       <TouchableOpacity onPress={() => router.replace('/(auth)/login')} style={styles.linkRow}>
         <Text>Already have an account? </Text>
@@ -222,6 +338,9 @@ export default function Signup() {
 }
 
 const styles = StyleSheet.create({
+  headerSpacer: {
+    height: 50,
+  },
   row: {
     flexDirection: 'row',
     width: '100%',
@@ -229,6 +348,41 @@ const styles = StyleSheet.create({
   fieldGroup: {
     width: '100%',
     marginTop: 12,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    width: '100%',
+  },
+  stepButton: {
+    width: '48%',
+  },
+  radioRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  radioPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#000',
+    backgroundColor: '#fff',
+  },
+  radioPillActive: {
+    backgroundColor: '#1f1f1f',
+    borderColor: '#1f1f1f',
+  },
+  radioText: {
+    fontSize: 14,
+    color: '#000',
+  },
+  radioTextActive: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   half: {
     flex: 1,
@@ -255,6 +409,52 @@ const styles = StyleSheet.create({
   error: {
     color: '#e63e4c',
     marginTop: 8,
+  },
+  mutedText: {
+    color: '#888',
+    marginTop: 6,
+  },
+  profileTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  profilePicWrapper: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  profilePicCircle: {
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  profilePicImage: {
+    width: '100%',
+    height: '100%',
+  },
+  profileActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    marginBottom: 8,
+  },
+  profileActionButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#e5e5e5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  skipText: {
+    textAlign: 'center',
+    color: '#888',
+    marginTop: 6,
   },
   linkRow: {
     flexDirection: 'row',

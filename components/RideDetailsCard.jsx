@@ -11,9 +11,9 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Octicons from '@expo/vector-icons/Octicons';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
-import users from '../data/userData.json';
 import { joinRequestsAPI } from '../src/api/joinRequests';
 import { useSearch } from '../context/SearchContext';
+import { parseServerDate } from '../src/utils/date';
 
 export default function RideDetailsCard({ ride, ongoing = false, join = false }) {
   const router = useRouter();
@@ -47,9 +47,15 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
   }, [ride?.id, join]);
 
   
-  const findUserByHandle = (handle) => users.find(u => u.handle === handle);
-
-  const creator = findUserByHandle(ride.creator?.handle) || ride.creator || { name: 'Unknown', handle: '@user' };
+  const creator = ride.creator || { name: 'Unknown', handle: '@user' };
+  const rideStartValue = ride?.start_time ?? ride?.startTime ?? ride?.start_time_utc ?? ride?.startTimeUtc ?? ride?.dateTime;
+  const rideStartDate = parseServerDate(rideStartValue);
+  const rideDayLabel = rideStartDate
+    ? rideStartDate.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })
+    : ride?.date?.day;
+  const rideTimeLabel = rideStartDate
+    ? rideStartDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, hourCycle: 'h12' })
+    : ride?.date?.time;
 
   const handleRequest = async () => {
     console.log('🔵 handleRequest called, ride.id:', ride?.id, 'isRequested:', isRequested, 'requesting:', requesting);
@@ -157,7 +163,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
       {/* Date/time */}
       <View style={styles.rideRow}>
         <FontAwesome name="clock-o" size={14} color="#888" style={[styles.icon, { marginLeft: 4 }]}/>
-        <Text style={styles.rideText}><Text style={styles.rideText}>{ride.date.day}, {ride.date.time}</Text></Text>
+        <Text style={styles.rideText}><Text style={styles.rideText}>{rideDayLabel}, {rideTimeLabel}</Text></Text>
       </View>
 
       {/* Ride creator */}
@@ -215,7 +221,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
             <Text style={[styles.handle, styles.rideRow]}>No other passengers.</Text>
           ) : (
             (ride.partners || []).map((partnerData, index) => {
-              const partner = findUserByHandle(partnerData.handle) || partnerData || { name: 'Unknown', handle: '@user' };
+              const partner = partnerData || { name: 'Unknown', handle: '@user' };
               return (
                 <View key={index} style={styles.creatorContainer}>
                   <TouchableOpacity

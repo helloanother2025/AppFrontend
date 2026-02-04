@@ -22,7 +22,7 @@ const Home = () => {
         duration: 100,
         useNativeDriver: true,
       }).start(() => {
-        setTimeout(() => router.replace('/dash'), 500);
+        setTimeout(() => router.replace('/(auth)/login'), 500);
       });
     }
   }, [fontsLoaded]);

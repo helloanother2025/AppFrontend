@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, StyleSheet, TouchableOpacity, Switch } from 'react-native';
 import { StyledFauxSearch as Search } from '../../../components/StyledFauxSearch';
 import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView';
@@ -15,6 +15,8 @@ import { useSearch } from '../../../context/SearchContext';
 import { useRouter } from 'expo-router';
 import * as polyline from '@mapbox/polyline';
 import { useRide } from '../../../context/RideContext';
+import { useFocusEffect } from '@react-navigation/native';
+import { parseServerDate } from '../../../src/utils/date';
 
 const toRad = (x) => (x * Math.PI) / 180;
 
@@ -124,7 +126,7 @@ function projectPointToRoute(locationIn, routePolyline, thresholdKm) {
 
 const AvailableRides = () => {
   const router = useRouter();
-  const { searchData } = useSearch();
+  const { searchData, resetSearchData } = useSearch();
   const scrollRef = useRef(null);
   const { rides: availableRides, fetchAvailableRides } = useRide();
 
@@ -139,7 +141,7 @@ const AvailableRides = () => {
   const getRideStartDate = (ride) => {
     const raw = ride?.start_time ?? ride?.startTime ?? ride?.start_time_utc ?? ride?.startTimeUtc ?? ride?.dateTime;
     if (!raw) return null;
-    const parsed = raw instanceof Date ? raw : new Date(raw);
+    const parsed = raw instanceof Date ? raw : parseServerDate(raw);
     if (Number.isNaN(parsed.getTime())) return null;
     return parsed;
   };
@@ -229,6 +231,14 @@ const AvailableRides = () => {
   useEffect(() => {
     fetchAvailableRides();
   }, [fetchAvailableRides]);
+
+  useFocusEffect(
+    useCallback(() => {
+      resetSearchData();
+      setShowSearch(true);
+      return () => {};
+    }, [resetSearchData])
+  );
 
   useEffect(() => {
     (async () => {

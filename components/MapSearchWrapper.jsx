@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { View, TouchableOpacity, StyleSheet } from 'react-native'
+import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native'
 import MapView, { Marker } from 'react-native-maps'
 import { StyledSearchBar as TextInput } from './StyledSearchBar'
 import { StyledText as Text } from './StyledText'
-import { searchPlaces, getPlaceDetails } from '../src/utils/mapServices'
+import { searchPlaces, getPlaceDetails, reverseGeocode } from '../src/utils/mapServices'
 
 const INITIAL_REGION = {
   latitude: 23.8103,
@@ -12,7 +12,7 @@ const INITIAL_REGION = {
   longitudeDelta: 0.05,
 }
 
-export default function MapSearch({ onPlaceSelected, searchQuery, style }) {
+export default function MapSearch({ onPlaceSelected, searchQuery, style, enableMapPick = true }) {
   const mapRef = useRef(null)
   const [query, setQuery] = useState(searchQuery || '')
   const [selectedPlace, setSelectedPlace] = useState(null)
@@ -74,6 +74,44 @@ export default function MapSearch({ onPlaceSelected, searchQuery, style }) {
     }
   }
 
+  const handleMapPress = async (event) => {
+    if (!enableMapPick) return
+
+    try {
+      const { latitude, longitude } = event.nativeEvent.coordinate
+      const result = await reverseGeocode(latitude, longitude)
+
+      const name = result?.name || 'Selected location'
+      const address = result?.address || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
+
+      setSelectedPlace({
+        name,
+        address,
+        latitude,
+        longitude,
+      })
+
+      const region = {
+        latitude,
+        longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }
+
+      mapRef.current?.animateToRegion(region, 500)
+      setQuery(address)
+      setShowSuggestions(false)
+
+      onPlaceSelected?.({
+        name,
+        formatted_address: address,
+        geometry: { location: { lat: latitude, lng: longitude } },
+      })
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   return (
     <View style={style}>
       <View style={styles.searchContainer}>
@@ -87,23 +125,34 @@ export default function MapSearch({ onPlaceSelected, searchQuery, style }) {
         />
 
         {showSuggestions && suggestions.length > 0 && (
-          <View style={styles.suggestionList}>
-            {isLoading && <Text>Loading...</Text>}
-            {suggestions.map((item) => (
-              <TouchableOpacity
-                key={item.place_id}
-                style={styles.suggestionItem}
-                onPress={() => handleSelect(item)}
-              >
-                <Text style={{ fontWeight: 'semibold' }}>{item.description}</Text>
-              </TouchableOpacity>
-            ))}
+          <View style={styles.suggestionList} onStartShouldSetResponder={() => true}>
+            <ScrollView
+              keyboardShouldPersistTaps="always"
+              nestedScrollEnabled
+              showsVerticalScrollIndicator
+            >
+              {isLoading && <Text>Loading...</Text>}
+              {suggestions.map((item) => (
+                <TouchableOpacity
+                  key={item.place_id}
+                  style={styles.suggestionItem}
+                  onPress={() => handleSelect(item)}
+                >
+                  <Text style={styles.suggestionText}>{item.description}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         )}
       </View>
 
       <View style={styles.mapWrapper}>
-        <MapView ref={mapRef} style={styles.map} initialRegion={INITIAL_REGION}>
+        <MapView
+          ref={mapRef}
+          style={styles.map}
+          initialRegion={INITIAL_REGION}
+          onPress={handleMapPress}
+        >
           {selectedPlace && (
             <Marker
               coordinate={{
@@ -145,6 +194,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     maxHeight: 250,
+    overflow: 'hidden',
     marginTop: -8,
     elevation: 5, 
     shadowColor: '#000',
@@ -156,5 +206,8 @@ const styles = StyleSheet.create({
     padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+  },
+  suggestionText: {
+    fontWeight: 'semibold',
   },
 })

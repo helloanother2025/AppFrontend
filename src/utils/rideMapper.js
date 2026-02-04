@@ -1,10 +1,12 @@
+import { parseServerDate } from './date';
+
 const formatRideDate = (value) => {
   if (!value) {
     return { day: '', time: '' };
   }
 
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) {
+  const date = value instanceof Date ? value : parseServerDate(value);
+  if (!date || Number.isNaN(date.getTime())) {
     return { day: '', time: '' };
   }
 
@@ -37,6 +39,7 @@ export const normalizeRide = (ride) => {
   if (!ride) return null;
 
   const alreadyNormalized = !!ride.start && !!ride.destination && !!ride.creator;
+  const startTimeValue = ride.start_time ?? ride.startTime ?? ride.start_time_utc ?? ride.startTimeUtc ?? ride.dateTime;
   if (alreadyNormalized) {
     const startCoords = normalizeCoords(ride.start.coords) ?? ride.start.coords;
     const destCoords = normalizeCoords(ride.destination.coords) ?? ride.destination.coords;
@@ -57,7 +60,7 @@ export const normalizeRide = (ride) => {
         user_id: ride.creator.user_id ?? ride.creator.id ?? ride.creator.userId,
         handle: ensureHandle(ride.creator.handle, ride.creator.username),
       },
-      date: ride.date ?? formatRideDate(ride.start_time ?? ride.startTime),
+      date: startTimeValue ? formatRideDate(startTimeValue) : (ride.date ?? formatRideDate(ride.start_time ?? ride.startTime)),
       routePolyline: ride.routePolyline ?? ride.route_polyline ?? ride.routePolyline,
       transport: ride.transport ?? ride.transport_mode ?? ride.transportMode,
       gender: ride.gender ?? ride.gender_preference ?? ride.genderPreference ?? 'Any',
@@ -82,7 +85,7 @@ export const normalizeRide = (ride) => {
     lng: ride.dest_lng ?? ride.destLng,
   });
 
-  const dateParts = formatRideDate(ride.start_time ?? ride.startTime);
+  const dateParts = formatRideDate(startTimeValue ?? ride.start_time ?? ride.startTime);
 
   return {
     id: ride.ride_id ?? ride.id ?? ride.rideId,

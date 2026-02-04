@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useReducer, useEffect } from 'react';
 import { usersAPI } from '../src/api/users';
 import { authAPI } from '../src/api/auth';
+import client from '../src/api/client';
 import * as SecureStore from 'expo-secure-store';
 
 const UserContext = createContext();
@@ -60,10 +61,21 @@ export const UserProvider = ({ children }) => {
       try {
         const token = await SecureStore.getItemAsync('authToken');
         if (token) {
-          dispatch({ type: 'INITIALIZE' });
-        } else {
-          dispatch({ type: 'INITIALIZE' });
+          client.defaults.headers.common.Authorization = `Bearer ${token}`;
+          try {
+            const userData = await usersAPI.getCurrentUser();
+            dispatch({ type: 'SET_CURRENT_USER', payload: userData });
+            return;
+          } catch (err) {
+            await SecureStore.deleteItemAsync('authToken');
+            await SecureStore.deleteItemAsync('userId');
+            await SecureStore.deleteItemAsync('userUuid');
+            delete client.defaults.headers.common.Authorization;
+            dispatch({ type: 'LOGOUT' });
+            return;
+          }
         }
+        dispatch({ type: 'INITIALIZE' });
       } catch (error) {
         console.log('Auth check error:', error);
         dispatch({ type: 'INITIALIZE' });
