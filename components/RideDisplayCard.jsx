@@ -82,8 +82,8 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
 
     const creatorId = ride?.creator_id ?? ride?.creator?.user_id ?? ride?.creator?.id;
     const currentUserId = currentUser?.user_id ?? currentUser?.id;
-    if (creatorId != null && currentUserId != null && String(creatorId) !== String(currentUserId)) {
-      Alert.alert('You are not authorized');
+    if (creatorId != null && currentUserId != null && String(creatorId) === String(currentUserId)) {
+      Alert.alert('You are not authorized to join your own ride');
       return;
     }
 

@@ -42,3 +42,5 @@ yarn-error.*
 /android
 /docs
 /package-lock.json
+.idea
+.vscode

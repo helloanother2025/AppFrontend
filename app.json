@@ -9,27 +9,39 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "config": {
-        "googleMapsApiKey": "${EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}"
-      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We use your location to set your ride's starting point."
       }
     },
     "android": {
       "edgeToEdgeEnabled": true,
+      "package": "com.anonymous.AppFrontend",
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
       "config": {
         "googleMaps": {
-          "apiKey": "${EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}"
+          "apiKey": "{key value for google maps API key goes here}"
         }
-      },
-      "package": "com.anonymous.AppFrontend"
+      }
     },
-    "web": {},
     "plugins": [
       "expo-router",
       "expo-audio",
-      "expo-video"
-    ]
+      "expo-video",
+      "expo-asset",
+      "@react-native-community/datetimepicker",
+      "expo-secure-store",
+      "expo-system-ui"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "62fd8533-4699-42ab-be26-f4db7e7aeb1e"
+      }
+    }
   }
 }

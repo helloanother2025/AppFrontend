@@ -15,6 +15,7 @@ import { useSearch } from '../../../context/SearchContext';
 import { useRouter } from 'expo-router';
 import * as polyline from '@mapbox/polyline';
 import { useRide } from '../../../context/RideContext';
+import { useUser } from '../../../context/UserContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { parseServerDate } from '../../../src/utils/date';
 
@@ -124,11 +125,13 @@ function projectPointToRoute(locationIn, routePolyline, thresholdKm) {
 }
 
 
+
 const AvailableRides = () => {
   const router = useRouter();
   const { searchData, resetSearchData } = useSearch();
   const scrollRef = useRef(null);
   const { rides: availableRides, fetchAvailableRides } = useRide();
+  const { currentUser } = useUser();
 
   const [showSearch, setShowSearch] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
@@ -221,10 +224,15 @@ const AvailableRides = () => {
       });
     }
 
-    // Transport, gender, and capacity filters (case-insensitive)
+    // Transport, gender, capacity, and own ride filters (case-insensitive)
     filtered = filtered.filter((ride) => {
       const status = String(ride.status ?? ride.currentStatus ?? ride.current_status ?? '').toLowerCase();
       if (['completed', 'cancelled', 'expired', 'ended'].includes(status)) return false;
+
+      // Exclude rides created by the current user
+      const creatorId = ride?.creator_id ?? ride?.creator?.user_id ?? ride?.creator?.id;
+      const currentUserId = currentUser?.user_id ?? currentUser?.id;
+      if (creatorId != null && currentUserId != null && String(creatorId) === String(currentUserId)) return false;
 
       const availableSeats = Number(ride.availableSeats ?? ride.available_seats ?? ride.seats);
       if (Number.isFinite(availableSeats) && availableSeats <= 0) return false;
