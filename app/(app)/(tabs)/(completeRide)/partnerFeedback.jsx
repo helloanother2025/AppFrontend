@@ -13,23 +13,14 @@ const partnerFeedback = () => {
   const router = useRouter();
 
   const currentRide = rides[1];
-  const TAG_OPTIONS = ['On time', 'Polite', 'Paid share', 'Great convo', 'Cleanliness'];
   const [partners, setPartners] = useState(
-    currentRide.partners.map(p => ({ ...p, rating: p.rating || 0, tags: p.tags || [], notes: p.notes || '' }))
+    currentRide.partners.map(p => ({ ...p, rating: p.rating || '' }))
   );
 
   const handleRating = (partnerHandle, rating) => {
     setPartners(
       partners.map((p) => (p.handle === partnerHandle ? { ...p, rating } : p))
     );
-  };
-
-  const toggleTag = (partnerHandle, tag) => {
-    setPartners(partners.map(p => {
-      if (p.handle !== partnerHandle) return p;
-      const has = p.tags.includes(tag);
-      return { ...p, tags: has ? p.tags.filter(t => t !== tag) : [...p.tags, tag] };
-    }));
   };
 
   const Star = ({ filled, onClick }) => (
@@ -52,20 +43,12 @@ const partnerFeedback = () => {
           </View>
           
           <View style={{ flexDirection: 'row' }}>
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Star
-                  key={i}
-                  filled={i <= partner.rating}
-                  onClick={() => handleRating(partner.handle, i)}
-                />
-              ))}
-            </View>
-
-          <View style={styles.tagsRow}>
-            {TAG_OPTIONS.map(tag => (
-              <TouchableOpacity key={tag} onPress={() => toggleTag(partner.handle, tag)} style={[styles.tagChip, partner.tags.includes(tag) && styles.tagChipActive]}>
-                <Text style={[styles.tagText, partner.tags.includes(tag) && styles.tagTextActive]}>{tag}</Text>
-              </TouchableOpacity>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Star
+                key={i}
+                filled={i <= partner.rating}
+                onClick={() => handleRating(partner.handle, i)}
+              />
             ))}
           </View>
         </Card>

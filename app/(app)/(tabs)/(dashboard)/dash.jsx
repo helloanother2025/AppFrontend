@@ -68,12 +68,12 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 100,        // <-- ensure it floats above everything
+    zIndex: 100,      
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 50,     // <-- safe area + spacing
-    paddingHorizontal: 20,
+    paddingTop: 50,     
+    paddingHorizontal: 25,
     paddingBottom: 10,
     backgroundColor: '#f7f7f7',
   },

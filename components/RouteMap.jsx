@@ -118,7 +118,7 @@ const RouteMap = ({ ride, userStartCoords, userDestCoords, small = true, style }
         {startCoords && <Marker coordinate={startCoords} title="Start" pinColor="orange"/>}
         {destCoords && <Marker coordinate={destCoords} title="Destination" pinColor="#e63e4c"/>}
         {routeCoords.length > 0 && (
-          <Polyline coordinates={routeCoords} strokeWidth={6} strokeColor={theme === 'dark' ? "#f0e9d3" : "#1f1f1f"} />
+          <Polyline coordinates={routeCoords} strokeWidth={6} strokeColor={theme === 'dark' ? "#c9c9c9" : "#1f1f1f"} />
         )}
         
         {userStart && <CustomMarker coordinate={userStart} title="Your pickup" color="#888" iconName="circle" size={18}/>}

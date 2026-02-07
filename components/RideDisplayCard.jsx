@@ -10,7 +10,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Octicons from '@expo/vector-icons/Octicons';
 import { useRouter } from 'expo-router'; 
 
-export default function RideDisplayCard({ ride, style, join = false, create = false, ongoing = false, onPress }) {
+export default function RideDisplayCard({ ride, style, join = false, create = false, ongoing = false, previous = false, onPress }) {
   const [isRequested, setIsRequested] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
 
@@ -42,7 +42,7 @@ export default function RideDisplayCard({ ride, style, join = false, create = fa
       )}
 
       {/* Ride creator */}
-      {(join || create || ongoing) && (
+      {(!previous) && (
         <View style={styles.creatorRow}>
           <Text style={{ fontSize: 30 }}>👤 </Text>
           <View>
@@ -80,7 +80,7 @@ export default function RideDisplayCard({ ride, style, join = false, create = fa
       
 
       {/* Transport, seats, fare */}
-      {ride.transport && (
+      {(ride.transport && !previous && !ongoing) && (
         <View style={styles.transportContainer}>
           <View style={{ width: '33%', flex: 1, alignItems: 'center' }}>
             <Text style={{ fontSize: 12 }}>Transport</Text>

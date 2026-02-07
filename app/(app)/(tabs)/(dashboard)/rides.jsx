@@ -21,7 +21,7 @@ const UserRides = () => {
       <Title style={{marginTop: 10}}>Previous rides</Title>
       
       {previousRides.map((ride, index=2) => (
-        <RideCard key={index} ride={ride} onPress={() => router.push(`/ride/${ride.id}`)} />
+        <RideCard key={index} ride={ride} previous={true} onPress={() => router.push(`/ride/${ride.id}`)} />
       ))}
     </ScrollView>
   )

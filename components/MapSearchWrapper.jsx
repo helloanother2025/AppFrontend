@@ -256,7 +256,7 @@ export default function MapSearch({
               />
             </View>
             
-            <View style={[styles.searchBar, {top: 75}]}>
+            <View style={[styles.searchBar, {top: 135}]}>
               <Entypo name="location-pin" size={20} color="#e63e4c" style={{marginRight: 5}}  />
               <TextInput
                 style={[{flex: 1}, styles.shadow]}
@@ -296,7 +296,7 @@ export default function MapSearch({
       {showSuggestions && (
         <View style={[
           styles.suggestionOverlay, 
-          allowBoth && { top: activeField === 'start' ? 73 : 125 }
+          allowBoth && { top: activeField === 'start' ? 133 : 188 }
         ]}>
           <View style={styles.suggestionList}>
             {isLoading && <Text>Loading...</Text>}
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     position: 'absolute',
-    top: 20,
+    top: 80,
     left: 20,
     right: 20,
     zIndex: 1,
