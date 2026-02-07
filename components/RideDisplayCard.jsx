@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { StyledText as Text } from './StyledText';
 import { StyledCardButton as CardButton } from './StyledCardButton';
 import { StyledButton as Button } from './StyledButton';
@@ -14,7 +14,7 @@ import { useSearch } from '../context/SearchContext';
 import { useUser } from '../context/UserContext';
 import { useRide } from '../context/RideContext';
 
-export default function RideDisplayCard({ ride, style, join = false, create = false, ongoing = false, previous = false, onPress }) {
+export default function RideDisplayCard({ ride, join = false, create = false, ongoing = false, onPress }) {
   const [isRequested, setIsRequested] = useState(false);
   const [joinStatus, setJoinStatus] = useState(null);
   const [isCompleted, setIsCompleted] = useState(false);
@@ -134,6 +134,7 @@ export default function RideDisplayCard({ ride, style, join = false, create = fa
       if (!isRideCompleted) {
         updated = await updateRideStatus(ride?.id, 'completed');
       }
+      // Always normalize before selecting
       selectRide(updated || ride);
       router.push('/fareCalculation');
       setIsCompleted(true);
@@ -148,7 +149,8 @@ export default function RideDisplayCard({ ride, style, join = false, create = fa
   };
 
   return (
-    <CardButton style={style} onPress={onPress} disabled={onPress ? false : true}>
+
+    <CardButton onPress={onPress} disabled={onPress ? false : true}>
 
     {(join || create) && (ride.gender != 'Any') && (
         <View
@@ -163,14 +165,26 @@ export default function RideDisplayCard({ ride, style, join = false, create = fa
       )}
 
       {/* Ride creator */}
-      {(!previous) && (
-        <View style={styles.creatorRow}>
+      {(join || create || ongoing) && (
+        <TouchableOpacity
+          style={styles.creatorRow}
+          activeOpacity={0.7}
+          onPress={() => {
+            // Only navigate if not current user
+            const creatorHandle = ride.creator.handle || ride.creator.username;
+            const creatorId = ride?.creator_id ?? ride?.creator?.user_id ?? ride?.creator?.id;
+            const currentUserId = currentUser?.user_id ?? currentUser?.id;
+            if (creatorHandle && (!currentUserId || String(creatorId) !== String(currentUserId))) {
+              router.push(`/user/${creatorHandle}`);
+            }
+          }}
+        >
           <Text style={{ fontSize: 30 }}>👤 </Text>
           <View>
             <Text style={{ fontWeight: 'semibold', fontSize: 16 }}>{ride.creator.name}</Text>
             <Text style={styles.handle}>{ride.creator.handle}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
       )}
       
       {/* Start location */}
@@ -201,7 +215,7 @@ export default function RideDisplayCard({ ride, style, join = false, create = fa
       
 
       {/* Transport, seats, fare */}
-      {(ride.transport && !previous && !ongoing) && (
+      {ride.transport && (
         <View style={styles.transportContainer}>
           <View style={{ width: '33%', flex: 1, alignItems: 'center' }}>
             <Text style={{ fontSize: 12 }}>Transport</Text>
@@ -209,18 +223,15 @@ export default function RideDisplayCard({ ride, style, join = false, create = fa
           </View>
 
           <View style={{ width: '33%', alignItems: 'center' }}>
-            <Text style={{ fontSize: 12 }}>{join ? 'Seats' : create ? 'Passengers' : 'Participants'}</Text>
-            <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>
-              {join
-                ? Math.max(
-                    0,
-                    Number.isFinite(Number(ride.availableSeats ?? ride.available_seats ?? ride.seats))
-                      ? Number(ride.availableSeats ?? ride.available_seats ?? ride.seats)
-                      : Number(ride.totalPassengers ?? 0) - (Array.isArray(ride.partners) ? ride.partners.length : 0)
-                  )
-                : create
-                ? ride.totalPassengers
-                : (Array.isArray(ride.partners) ? ride.partners.length : 0) + 1}
+            <Text style={{ fontSize: 12 }}>Seats</Text>
+            <Text style={[styles.rideText, { fontWeight: 'semibold' }]}> 
+              {(() => {
+                // Show number of empty seats for available rides
+                const total = Number(ride.totalPassengers ?? ride.available_seats ?? ride.seats ?? 0);
+                const taken = Array.isArray(ride.partners) ? ride.partners.length : 0;
+                const empty = total - taken;
+                return empty > 0 ? empty : 0;
+              })()}
             </Text>
           </View>
 
@@ -229,39 +240,52 @@ export default function RideDisplayCard({ ride, style, join = false, create = fa
             {ride.fare === 'TBA' ? (
               <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>TBA</Text>
             ) : (
-              <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>৳ {ride.fare}</Text>
+              <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>BDT {ride.fare}</Text>
             )}
           </View>
         </View>
       )}
       
-      {/*
-      {join && (
-        <Button
-          style={[{ marginTop: 10 }, (isRequested || requesting || isFull || isGenderRestricted) && { backgroundColor: '#ababab' }]}
-          title={
-            requesting ? "Sending..." :
-            isRequested ? (
-              joinStatus === 'accepted' ? "Already Joined" :
-              joinStatus === 'rejected' ? "Request Declined" :
-              joinStatus === 'cancelled' ? "Request Cancelled" :
-              "Request Sent"
-            ) :
-            isFull ? "Ride Full" : isGenderRestricted ? "Restricted" : "Request to join"
-          }
-          onPress={handleRequest}
-          disabled={isRequested || requesting || isFull || isGenderRestricted}
-        />
-      )}
-      */}
 
+      {join && (
+        <View style={{ width: '100%', alignItems: 'center', marginTop: 10 }}>
+          <Button
+            style={[
+              { width: '90%' },
+              (isRequested || requesting || isFull || isGenderRestricted) && { backgroundColor: '#ababab' }
+            ]}
+            title={
+              requesting ? "Sending..." :
+              isRequested ? (
+                joinStatus === 'accepted' ? "Already Joined" :
+                joinStatus === 'rejected' ? "Request Declined" :
+                joinStatus === 'cancelled' ? "Request Cancelled" :
+                "Request Sent"
+              ) :
+              isFull ? "Ride Full" : isGenderRestricted ? "Restricted" : "Request to join"
+            }
+            onPress={handleRequest}
+            disabled={isRequested || requesting || isFull || isGenderRestricted}
+          />
+        </View>
+      )}
+
+      {/* Only show one button: Complete ride (if not completed), Calculate fare (if completed and fare is pending), nothing if both done */}
       {ongoing && (
-        <Button
-          title={isRideCompleted ? "Calculate fare" : "Complete ride"}
-          style={[{ marginTop: 10 }, (isRideCompleted && !isFarePending) && { backgroundColor: '#ababab' }]}
-          onPress={handleComplete}
-          disabled={isRideCompleted && !isFarePending}
-        />
+        (!isRideCompleted && (
+          <Button
+            title="Complete ride"
+            style={{ marginTop: 10 }}
+            onPress={handleComplete}
+          />
+        )) ||
+        (isRideCompleted && isFarePending && (
+          <Button
+            title="Calculate fare"
+            style={{ marginTop: 10 }}
+            onPress={handleComplete}
+          />
+        ))
       )}
 
       {(create && ride.preferences) && ( <>

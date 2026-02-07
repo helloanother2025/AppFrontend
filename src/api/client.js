@@ -16,9 +16,9 @@ client.interceptors.request.use(async (config) => {
     const token = await SecureStore.getItemAsync('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('Token attached to request:', config.url);
+      // console.log removed
     } else {
-      console.log('No token found in SecureStore for request:', config.url);
+      // console.log removed
     }
   } catch (error) {
     console.error('Error retrieving token:', error);
@@ -32,7 +32,7 @@ client.interceptors.request.use(async (config) => {
 client.interceptors.response.use(
   (response) => {
     loadingStateManager.decrement();
-    console.log('✅ API Response:', response.config.url, response.status);
+    // console.log removed
     return response;
   },
   async (error) => {

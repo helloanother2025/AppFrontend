@@ -105,6 +105,26 @@ export const NotificationsProvider = ({ children }) => {
         deleteNotification,
         markAllAsRead,
         clearAll,
+        // New actions for notification types
+        acceptJoinRequest: async (notification) => {
+          await notificationsAPI.acceptJoinRequest(notification.id);
+          markAsRead(notification.id);
+        },
+        declineJoinRequest: async (notification) => {
+          await notificationsAPI.declineJoinRequest(notification.id);
+          markAsRead(notification.id);
+        },
+        acceptFriendRequest: async (notification) => {
+          await notificationsAPI.acceptFriendRequest(notification.id);
+          markAsRead(notification.id);
+        },
+        declineFriendRequest: async (notification) => {
+          await notificationsAPI.declineFriendRequest(notification.id);
+          markAsRead(notification.id);
+        },
+        removeNotification: (notification) => {
+          deleteNotification(notification.id);
+        },
       }}
     >
       {children}

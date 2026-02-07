@@ -16,6 +16,11 @@ export const joinRequestsAPI = {
     return response.data;
   },
 
+  getJoinRequest: async (requestId) => {
+    const response = await client.get(`/join-requests/${requestId}`);
+    return response.data;
+  },
+
   getMyRequests: async () => {
     const response = await client.get('/join-requests/my-requests');
     return response.data;

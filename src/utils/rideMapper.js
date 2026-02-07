@@ -78,10 +78,41 @@ export const normalizeRide = (ride) => {
           ? 'pending'
           : null,
       totalPassengers: ride.totalPassengers ?? ride.available_seats ?? ride.availableSeats ?? ride.seats ?? 0,
-      partners: Array.isArray(ride.partners) ? ride.partners : Array.isArray(ride.passengers) ? ride.passengers.map((p) => ({
-        name: p.name,
-        handle: ensureHandle(p.username ?? p.handle, p.username),
-      })) : [],
+      partners: (() => {
+        // Prefer partners if already normalized with coords
+        if (Array.isArray(ride.partners) && ride.partners.length > 0 && ride.partners[0].start && ride.partners[0].destination) {
+          return ride.partners;
+        }
+        // Map passengers array from backend (with possible coords)
+        if (Array.isArray(ride.passengers)) {
+          return ride.passengers.map((p) => ({
+            name: p.name,
+            handle: ensureHandle(p.username ?? p.handle, p.username),
+            start: {
+              name: p.start_name || p.start_address || 'Pickup',
+              coords: (p.start_lat !== undefined && p.start_lng !== undefined)
+                ? { lat: Number(p.start_lat), lng: Number(p.start_lng) }
+                : null,
+            },
+            destination: {
+              name: p.dest_name || p.dest_address || 'Drop-off',
+              coords: (p.dest_lat !== undefined && p.dest_lng !== undefined)
+                ? { lat: Number(p.dest_lat), lng: Number(p.dest_lng) }
+                : null,
+            },
+          }));
+        }
+        // Fallback: map any partners array with just name/handle
+        if (Array.isArray(ride.partners)) {
+          return ride.partners.map((p) => ({
+            name: p.name,
+            handle: ensureHandle(p.handle, p.handle),
+            start: { name: 'Pickup', coords: null },
+            destination: { name: 'Drop-off', coords: null },
+          }));
+        }
+        return [];
+      })(),
       status: statusValue,
     };
   }
@@ -121,6 +152,18 @@ export const normalizeRide = (ride) => {
       ? ride.passengers.map((p) => ({
           name: p.name,
           handle: ensureHandle(p.username ?? p.handle, p.username),
+          start: {
+            name: p.start_name || p.start_address || 'Pickup',
+            coords: (p.start_lat !== undefined && p.start_lng !== undefined)
+              ? { lat: Number(p.start_lat), lng: Number(p.start_lng) }
+              : null,
+          },
+          destination: {
+            name: p.dest_name || p.dest_address || 'Drop-off',
+            coords: (p.dest_lat !== undefined && p.dest_lng !== undefined)
+              ? { lat: Number(p.dest_lat), lng: Number(p.dest_lng) }
+              : null,
+          },
         }))
       : [],
     date: dateParts,

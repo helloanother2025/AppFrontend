@@ -4,10 +4,19 @@ import { StyledText as Text } from '../components/StyledText';
 import { useFonts } from 'expo-font';
 import { useRouter } from 'expo-router';
 import React from 'react';
+import { useSearch } from '../context/SearchContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 const Home = () => {
   const router = useRouter();
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const { resetSearchData } = useSearch();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      resetSearchData();
+    }, [resetSearchData])
+  );
 
   const [fontsLoaded] = useFonts({
     'Montserrat-Regular': require('../assets/fonts/Montserrat-Regular.ttf'),

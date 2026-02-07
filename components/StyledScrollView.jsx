@@ -1,28 +1,35 @@
-import React from "react";
-import { ScrollView, StyleSheet} from "react-native";
+import { ScrollView, StyleSheet } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 
-export const StyledScrollView = React.forwardRef((props, ref) => {
-    return <ScrollView 
-      ref={ref}
-      style={[styles.scrollView, props.style]} 
-      contentContainerStyle={[styles.contentContainer, props.contentContainerStyle]}
-      {...props}
+export function StyledScrollView(props) {
+  const { theme } = useTheme ? useTheme() : { theme: 'light' };
+  const isDark = theme === 'dark';
+  return (
+    <ScrollView
+      style={[
+        styles.scrollView,
+        { backgroundColor: isDark ? '#181c22' : '#f7f7f7' },
+        props.style,
+      ]}
+      contentContainerStyle={[
+        styles.contentContainer,
+        { backgroundColor: isDark ? '#181c22' : '#f7f7f7' },
+        props.contentContainerStyle,
+      ]}
     >
       {props.children}
-    </ScrollView>;
-});
+    </ScrollView>
+  );
+}
 
 const styles = StyleSheet.create({
-    scrollView: {
-      padding: 25,
-      paddingTop: 40,
-      paddingBottom: 60,
-      marginBottom: 90,
-      backgroundColor: '#f7f7f7',
-    },
-    contentContainer: {
-      alignItems: 'flex-start',
-      paddingBottom: 60,
-      backgroundColor: '#f7f7f7',
-    }
-  });
+  scrollView: {
+    padding: 25,
+    paddingTop: 10,
+    marginBottom: 60,
+  },
+  contentContainer: {
+    alignItems: 'flex-start',
+    paddingBottom: 60,
+  },
+});

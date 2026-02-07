@@ -16,8 +16,9 @@ import { useSearch } from '../context/SearchContext';
 import { parseServerDate } from '../src/utils/date';
 import { useUser } from '../context/UserContext';
 import { useRide } from '../context/RideContext';
+import { normalizeRide } from '../src/utils/rideMapper';
 
-export default function RideDetailsCard({ ride, ongoing = false, join = false, onUserPress }) {
+export default function RideDetailsCard({ ride, ongoing = false, join = false }) {
   const router = useRouter();
   const { searchData } = useSearch();
   const [showPassengers, setShowPassengers] = useState(false);
@@ -28,10 +29,55 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false, o
   const [requesting, setRequesting] = useState(false);
   const { currentUser } = useUser();
   const { selectRide, updateRideStatus } = useRide();
+  const [passengers, setPassengers] = useState([]);
 
   if (!ride) return <Text>No ride data provided.</Text>;
 
-<<<<<<< HEAD
+  // Fetch ride details by ID for accurate passenger count
+  useEffect(() => {
+    const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
+    async function fetchRideDetails() {
+      const rideId = ride?.id || ride?.ride_id;
+      if (!rideId) {
+        console.log('🚫 No valid rideId for fetching ride details:', ride);
+        return;
+      }
+      console.log('🔍 Fetching ride details for rideId:', rideId);
+      try {
+        const res = await fetch(`${API_BASE_URL}/rides/${rideId}`);
+        const contentType = res.headers.get('content-type');
+        if (res.ok && contentType && contentType.includes('application/json')) {
+          const data = await res.json();
+          // Fallback: use ride.partners if backend returns empty array
+          if (Array.isArray(data.passengers) && data.passengers.length > 0) {
+            setPassengers(data.passengers);
+          } else if (Array.isArray(ride.partners) && ride.partners.length > 0) {
+            setPassengers(ride.partners);
+          } else {
+            setPassengers([]);
+          }
+        } else {
+          const text = await res.text();
+          console.error('Failed to fetch ride details, non-JSON response:', text);
+          if (Array.isArray(ride.partners) && ride.partners.length > 0) {
+            setPassengers(ride.partners);
+          } else {
+            setPassengers([]);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch ride details:', err);
+        // Fallback: use ride.partners if fetch fails
+        if (Array.isArray(ride.partners) && ride.partners.length > 0) {
+          setPassengers(ride.partners);
+        } else {
+          setPassengers([]);
+        }
+      }
+    }
+    fetchRideDetails();
+  }, [ride?.id, ride?.ride_id]);
+
   // Check if user has already requested to join this ride
   useEffect(() => {
     const checkStatus = async () => {
@@ -51,11 +97,11 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false, o
     checkStatus();
   }, [ride?.id, join]);
 
-  
   const creator = ride.creator || { name: 'Unknown', handle: '@user' };
   const maxPassengers = Number(ride.totalPassengers ?? 0);
-  const currentPassengers = Array.isArray(ride.partners) ? ride.partners.length : 0;
-  const isFull = maxPassengers > 0 && currentPassengers >= maxPassengers;
+  const totalPassengers = Number(ride.totalPassengers ?? ride.available_seats ?? 0);
+  const availableSeats = typeof ride.available_seats === 'number' ? ride.available_seats : (totalPassengers - passengers.length);
+  const isFull = availableSeats === 0;
   const genderPreference = String(ride.gender ?? '').toLowerCase();
   const userGender = String(currentUser?.gender ?? '').toLowerCase();
   const isGenderRestricted =
@@ -79,45 +125,11 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false, o
   const rideTimeLabel = rideStartDate
     ? rideStartDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, hourCycle: 'h12' })
     : ride?.date?.time;
-=======
-  const findUserByHandle = (handle) => users.find(u => u.handle === handle);
->>>>>>> 336be2c1f4079923bcf50547ca694e33982a6197
 
   const handleRequest = async () => {
-    console.log('🔵 handleRequest called, ride.id:', ride?.id, 'isRequested:', isRequested, 'requesting:', requesting);
-    
-    if (!ride?.id) {
-      Alert.alert('Error', 'Ride information missing');
-      return;
-    }
-
-    if (isRequested) {
-      console.log('⚠️ Request already sent, skipping');
-      return;
-    }
-
-    if (isFull) {
-      Alert.alert('Ride Full', 'This ride has reached the maximum number of partners.');
-      return;
-    }
-
-    if (isGenderRestricted) {
-      Alert.alert('Restricted', 'This ride has a gender preference and cannot accept join requests.');
-      return;
-    }
-
+    if (isRequested || requesting || isFull || isGenderRestricted) return;
     setRequesting(true);
-    console.log('🔷 Setting requesting to true, submitting join request for ride:', ride.id);
-    
-    const creatorId = ride?.creator_id ?? ride?.creator?.user_id ?? ride?.creator?.id;
-    const currentUserId = currentUser?.user_id ?? currentUser?.id;
-    if (creatorId != null && currentUserId != null && String(creatorId) !== String(currentUserId)) {
-      Alert.alert('You are not authorized');
-      return;
-    }
-
     try {
-      
       // Normalize coordinates to ensure they have both lat/lng and latitude/longitude
       const normalizeCoords = (coords) => {
         if (!coords) return null;
@@ -143,7 +155,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false, o
         } : null,
         searchData.routePolyline || null
       );
-      
+
       console.log('✅ Join request response:', response);
       setIsRequested(true);
       setJoinStatus('pending');
@@ -156,18 +168,15 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false, o
       setRequesting(false);
     }
   };
-
-  const handleComplete = async () => {
-    if (isRideCompleted && isFareComplete) {
-      return;
-    }
-
+  // Unify logic: always set selectedRide and navigate, only update status for 'Complete ride'
+  const handleComplete = async (shouldComplete = false) => {
     try {
       let updated = ride;
-      if (!isRideCompleted) {
+      if (shouldComplete && !isRideCompleted) {
         updated = await updateRideStatus(ride?.id, 'completed');
       }
-      selectRide(updated || ride);
+      // Always normalize before selecting, so creator and fields are present
+      selectRide(normalizeRide(updated || ride));
       router.push('/fareCalculation');
       setIsCompleted(true);
     } catch (error) {
@@ -183,30 +192,44 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false, o
   return (
     <Card>
       {join && (
-        <Button
-          title={
-            requesting ? "Sending..." : 
-            isRequested ? (
-              joinStatus === 'accepted' ? "Already Joined" : 
-              joinStatus === 'rejected' ? "Request Declined" :
-              joinStatus === 'cancelled' ? "Request Cancelled" :
-              "Request Sent"
-            ) : 
-            isFull ? "Ride Full" : isGenderRestricted ? "Restricted" : "Request to join"
-          }
-          style={[{ marginBottom: 20 }, (isRequested || requesting || isFull || isGenderRestricted) && { backgroundColor: '#ababab' }]}
-          onPress={handleRequest}
-          disabled={isRequested || requesting || isFull || isGenderRestricted}
-        />
+        <>
+          <Button
+            title={
+              requesting ? "Sending..." : 
+              isRequested ? (
+                joinStatus === 'accepted' ? "Already Joined" : 
+                joinStatus === 'rejected' ? "Request Declined" :
+                joinStatus === 'cancelled' ? "Request Cancelled" :
+                "Request Sent"
+              ) : 
+              isFull ? "Ride Full" : isGenderRestricted ? "Restricted" : "Request to join"
+            }
+            style={[{ marginBottom: 20 }, (isRequested || requesting || isFull || isGenderRestricted) && { backgroundColor: '#ababab' }]}
+            onPress={handleRequest}
+            disabled={isRequested || requesting || isFull || isGenderRestricted}
+          />
+          <View style={{ marginBottom: 10 }}>
+            <Text style={[styles.rideText, { fontWeight: 'bold' }]}>Available seats: {availableSeats}</Text>
+          </View>
+        </>
       )}
       
+      {/* Only show one button: Complete ride (if not completed), Calculate fare (if completed and fare is pending), nothing if both done */}
       {ongoing && (
-        <Button
-          title={isRideCompleted ? "Calculate fare" : "Complete ride"}
-          style={[{ marginBottom: 20 }, (isRideCompleted && !isFarePending) && { backgroundColor: '#ababab' }]}
-          onPress={handleComplete}
-          disabled={isRideCompleted && !isFarePending}
-        />
+        (!isRideCompleted && (
+          <Button
+            title="Complete ride"
+            style={{ marginBottom: 10 }}
+            onPress={() => handleComplete(true)}
+          />
+        )) ||
+        (isRideCompleted && isFarePending && (
+          <Button
+            title="Calculate fare"
+            style={{ marginBottom: 20 }}
+            onPress={() => handleComplete(false)}
+          />
+        ))
       )}
 
       {/* Start location */}
@@ -224,7 +247,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false, o
       {/* Date/time */}
       <View style={styles.rideRow}>
         <FontAwesome name="clock-o" size={14} color="#888" style={[styles.icon, { marginLeft: 4 }]}/>
-        <Text style={styles.rideText}><Text style={styles.rideText}>{rideDayLabel}, {rideTimeLabel}</Text></Text>
+        <Text style={styles.rideText}>{rideDayLabel}, {rideTimeLabel}</Text>
       </View>
 
       {/* Ride creator */}
@@ -235,11 +258,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false, o
       <View style={styles.creatorContainer}>
         <TouchableOpacity
           style={styles.creatorRow}
-<<<<<<< HEAD
           onPress={() => creator?.handle && router.push(`user/${creator.handle}`)}
-=======
-          onPress={() => router.push(`/user/${creator.handle}`)}
->>>>>>> 336be2c1f4079923bcf50547ca694e33982a6197
         >
           <Text style={{ fontSize: 30 }}>👤 </Text>
           <View>
@@ -250,9 +269,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false, o
 
         {(join || ongoing) && !isOwnRide && (
           <View style={styles.contactRow}>
-<<<<<<< HEAD
             <TouchableOpacity 
-              style={{ paddingHorizontal: 10, marginRight: 15 }} 
               onPress={() => {
                 const uid = ride.creator_id || creator.user_id || creator.id;
                 console.log('💬 Opening chat from ride details:', { uid, creator: creator.name });
@@ -265,10 +282,8 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false, o
                   } 
                 });
               }}
+              style={{ marginRight: 16 }}
             >
-=======
-            <TouchableOpacity style={{ paddingHorizontal: 10, marginRight: 15 }} onPress={() => router.push({ pathname: '/chat/chatScreen', params: { handle: creator.handle } })}>
->>>>>>> 336be2c1f4079923bcf50547ca694e33982a6197
               <Ionicons name="chatbubble-ellipses" size={22} color="#e63e4c" />
             </TouchableOpacity>
             <StyledLink type="phone" value={creator.phone} style={{ marginVertical: 0 }} />
@@ -286,21 +301,25 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false, o
 
       {showPassengers && (
         <View>
-          {(ride.partners || []).length === 0 ? (
+          {passengers.length === 0 ? (
             <Text style={[styles.handle, styles.rideRow]}>No other passengers.</Text>
           ) : (
-            (ride.partners || []).map((partnerData, index) => {
-              const partner = partnerData || { name: 'Unknown', handle: '@user' };
+            passengers.map((partnerData, index) => {
+              const partner = partnerData || { name: 'Unknown', handle: '@user', username: 'unknown' };
               return (
                 <View key={index} style={styles.creatorContainer}>
                   <TouchableOpacity
                     style={styles.creatorRow}
-                    onPress={() => partner?.handle && router.push(`/user/${partner.handle}`)}
+                    onPress={() => {
+                      // Prefer username, fallback to handle
+                      const profileId = partner.username || partner.handle;
+                      if (profileId) router.push(`/user/${profileId}`);
+                    }}
                   >
                     <Text style={{ fontSize: 30 }}>👤 </Text>
                     <View>
                       <Text style={styles.creatorName}>{partner.name}</Text>
-                      <Text style={styles.handle}>{partner.handle}</Text>
+                      <Text style={styles.handle}>@{partner.username || partner.handle}</Text>
                     </View>
                   </TouchableOpacity>
                 </View>
@@ -317,10 +336,18 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false, o
       <BorderView>
         <View style={{flexDirection: 'row'}}>
           <View style={styles.rideColumn}>
-            <Text style={styles.rideText}>Total passengers:</Text>
+            <Text style={styles.rideText}>Total passengers allowed:</Text>
           </View>
           <View style={styles.rideColumn}>
-            <Text style={styles.rideText}>{(ride.partners || []).length} / {ride.totalPassengers}</Text>
+            <Text style={styles.rideText}>{totalPassengers}</Text>
+          </View>
+        </View>
+        <View style={{flexDirection: 'row'}}>
+          <View style={styles.rideColumn}>
+            <Text style={styles.rideText}>Current passengers:</Text>
+          </View>
+          <View style={styles.rideColumn}>
+            <Text style={styles.rideText}>{passengers.length}</Text>
           </View>
         </View>
 
@@ -353,11 +380,11 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false, o
           <Text style={styles.transportText}>{ride.transport}</Text>
         </View>
         <View style={styles.rideColumn}>
-          <Text>৳ {ride.fare}</Text>
+          <Text>BDT {ride.fare}</Text>
         </View>
       </View>
 
-      {/* Fare Breakdown 
+      {/* Fare Breakdown */}
       <View style={styles.subtitle}>
         <TouchableOpacity style={{ flexDirection: 'row' }} onPress={() => setShowBreakdown(!showBreakdown)}>
           <Text style={[styles.rideText, { fontWeight: 'bold' }]}>Fare Breakdown </Text>
@@ -372,7 +399,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false, o
               <Text style={styles.rideText}>{creator.name}</Text>
             </View>
             <View style={styles.rideColumn}>
-              <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>৳ {ride.fare}</Text>
+              <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>BDT {ride.fare}</Text>
             </View>
           </View>
 
@@ -382,13 +409,12 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false, o
                 <Text style={styles.rideText}>{partner.name}</Text>
               </View>
               <View style={styles.rideColumn}>
-                <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>৳ {ride.fare}</Text>
+                <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>BDT {ride.fare}</Text>
               </View>
             </View>
           ))}
         </BorderView>
       )}
-      */}
     </Card>
   );
 }

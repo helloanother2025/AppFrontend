@@ -1,6 +1,7 @@
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { StyledText as Text } from './StyledText';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTheme } from '../context/ThemeContext';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { useChat } from '../context/ChatContext';
@@ -42,16 +43,20 @@ const DashboardHeader = () => {
   const unreadCount = useMemo(() => {
     return (chats || []).reduce((sum, c) => sum + (Number(c.unread_count || 0) > 0 ? 1 : 0), 0);
   }, [chats]);
+  const { theme, toggleTheme } = useTheme ? useTheme() : { theme: 'light', toggleTheme: () => {} };
+  const isDark = theme === 'dark';
+  const [showSettings, setShowSettings] = useState(false);
+
   return (
-    <View style={styles.container}>
-      <Text style={{ fontWeight: 'bold', color: '#e63e4c', fontSize: 16 }}>
+    <View style={[styles.container, { backgroundColor: isDark ? '#181c22' : '#f7f7f7' }] }>
+      <Text style={{ fontWeight: 'bold', color: isDark ? '#e63e4c' : '#e63e4c', fontSize: 16 }}>
         BashayJabo
       </Text>
 
       <View style={styles.rightActions}>
         <TouchableOpacity style={styles.button} onPress={() => router.push('/(chat)')}>
           <View style={styles.iconWrapper}>
-            <Ionicons name="chatbubble-ellipses" size={24} color="#ababab" />
+            <Ionicons name="chatbubble-ellipses" size={24} color={isDark ? '#fff' : '#ababab'} />
             {unreadCount > 0 && (
               <View style={styles.badge}>
                 {unreadCount < 10 ? (
@@ -61,9 +66,17 @@ const DashboardHeader = () => {
             )}
           </View>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.button}>
-          <Ionicons name="settings-sharp" size={24} color="#ababab" />
+        <TouchableOpacity style={styles.button} onPress={() => setShowSettings(!showSettings)}>
+          <Ionicons name="settings-sharp" size={24} color={isDark ? '#fff' : '#ababab'} />
         </TouchableOpacity>
+        {showSettings && (
+          <View style={{ marginLeft: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#23272f' : '#fff', borderRadius: 12, padding: 8, elevation: 2 }}>
+            <Text style={{ color: isDark ? '#fff' : '#333', marginRight: 8 }}>Dark mode</Text>
+            <TouchableOpacity onPress={toggleTheme} style={{ padding: 4 }}>
+              <Ionicons name={theme === 'dark' ? 'moon' : 'sunny'} size={22} color={theme === 'dark' ? '#e63e4c' : '#333'} />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -78,8 +91,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 50,
-    paddingBottom: 5,
-    backgroundColor: '#f7f7f7',
+    paddingBottom: 10,
   },
   rightActions: {
     flexDirection: 'row',

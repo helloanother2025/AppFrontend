@@ -2,15 +2,16 @@
   {
     "id": 1,
     "type": "join_request",
+    "message": "@ahmed123 wants to join your ride",
     "user": {
-      "handle": "@saba130"
+      "name": "Ahmed Rahman",
+      "handle": "@ahmed123"
     },
     "ride": {
       "destination": "House #18, Road 6, Sector 5, Uttara",
       "transport": "Private Car",
       "date": "7 October",
-      "time": "2:30 PM",
-      "fare": 150
+      "time": "2:30 PM"
     },
     "status": "pending",
     "timestamp": "2 hours ago"
@@ -18,15 +19,16 @@
   {
     "id": 2,
     "type": "join_request",
+    "message": "@fatima456 wants to join your ride",
     "user": {
-      "handle": "@ridita110"
+      "name": "Fatima Khan",
+      "handle": "@fatima456"
     },
     "ride": {
       "destination": "House #18, Road 6, Sector 5, Uttara",
       "transport": "Private Car",
       "date": "7 October",
-      "time": "2:30 PM",
-      "fare": 150
+      "time": "2:30 PM"
     },
     "status": "pending",
     "timestamp": "1 hour ago"
@@ -34,15 +36,16 @@
   {
     "id": 3,
     "type": "join_request",
+    "message": "@karim789 wants to join your ride",
     "user": {
-      "handle": "@mounota122"
+      "name": "Karim Ahmed",
+      "handle": "@karim789"
     },
     "ride": {
       "destination": "House #18, Road 6, Sector 5, Uttara",
       "transport": "Private Car",
       "date": "7 October",
-      "time": "2:30 PM",
-      "fare": 150
+      "time": "2:30 PM"
     },
     "status": "accepted",
     "timestamp": "30 minutes ago"
@@ -50,90 +53,19 @@
   {
     "id": 4,
     "type": "join_request",
+    "message": "@sarah321 wants to join your ride",
     "user": {
-      "handle": "@mueed_s"
+      "name": "Sarah Islam",
+      "handle": "@sarah321"
     },
     "ride": {
       "destination": "House #18, Road 6, Sector 5, Uttara",
       "transport": "Private Car",
       "date": "7 October",
-      "time": "2:30 PM",
-      "fare": 150
+      "time": "2:30 PM"
     },
     "status": "declined",
     "timestamp": "15 minutes ago"
-  },
-  {
-    "id": 5,
-    "type": "join_request_accepted",
-    "user": {
-      "handle": "@saba130"
-    },
-    "ride": {
-      "destination": "House #18, Road 6, Sector 5, Uttara",
-      "transport": "Private Car",
-      "date": "7 October",
-      "time": "2:30 PM",
-      "fare": 150
-    },
-    "status": "accepted",
-    "timestamp": "10 minutes ago"
-  },
-  {
-    "id": 6,
-    "type": "join_request_rejected",
-    "user": {
-      "handle": "@ridita110"
-    },
-    "ride": {
-      "destination": "House #18, Road 6, Sector 5, Uttara",
-      "transport": "Private Car",
-      "date": "7 October",
-      "time": "2:30 PM",
-      "fare": 150
-    },
-    "status": "declined",
-    "timestamp": "8 minutes ago"
-  },
-  {
-    "id": 7,
-    "type": "fare_changed",
-    "user": {
-      "handle": "@mounota122"
-    },
-    "ride": {
-      "destination": "House #18, Road 6, Sector 5, Uttara",
-      "transport": "Private Car",
-      "date": "7 October",
-      "time": "2:30 PM",
-      "fare": 180
-    },
-    "status": "info",
-    "timestamp": "5 minutes ago"
-  },
-  {
-    "id": 8,
-    "type": "friend_added_to_ride",
-    "user": {
-      "handle": "@mueed_s"
-    },
-    "ride": {
-      "destination": "House #18, Road 6, Sector 5, Uttara",
-      "transport": "Private Car",
-      "date": "7 October",
-      "time": "2:30 PM",
-      "fare": 150
-    },
-    "status": "info",
-    "timestamp": "3 minutes ago"
-  },
-  {
-    "id": 9,
-    "type": "friend_request",
-    "user": {
-      "handle": "@newfriend"
-    },
-    "status": "pending",
-    "timestamp": "1 minute ago"
   }
 ]
+

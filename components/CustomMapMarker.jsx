@@ -8,6 +8,7 @@ export default function CustomMarker({
   color = '#e63e4c',
   size = 18,
   title,
+  labelColor = '#000',
   iconName,
 }) {
   return (
