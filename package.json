@@ -53,5 +53,16 @@
   "private": true,
   "overrides": {
     "react-dom": "19.1.0"
+  },
+  "babel": {
+    "presets": [
+      "babel-preset-expo"
+    ],
+    "plugins": [
+      "react-native-reanimated/plugin"
+    ]
+  },
+  "devDependencies": {
+    "babel-preset-expo": "^54.0.6"
   }
 }

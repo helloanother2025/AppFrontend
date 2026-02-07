@@ -17,7 +17,7 @@ import { parseServerDate } from '../src/utils/date';
 import { useUser } from '../context/UserContext';
 import { useRide } from '../context/RideContext';
 
-export default function RideDetailsCard({ ride, ongoing = false, join = false }) {
+export default function RideDetailsCard({ ride, ongoing = false, join = false, onUserPress }) {
   const router = useRouter();
   const { searchData } = useSearch();
   const [showPassengers, setShowPassengers] = useState(false);
@@ -31,6 +31,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
 
   if (!ride) return <Text>No ride data provided.</Text>;
 
+<<<<<<< HEAD
   // Check if user has already requested to join this ride
   useEffect(() => {
     const checkStatus = async () => {
@@ -78,6 +79,9 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
   const rideTimeLabel = rideStartDate
     ? rideStartDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, hourCycle: 'h12' })
     : ride?.date?.time;
+=======
+  const findUserByHandle = (handle) => users.find(u => u.handle === handle);
+>>>>>>> 336be2c1f4079923bcf50547ca694e33982a6197
 
   const handleRequest = async () => {
     console.log('🔵 handleRequest called, ride.id:', ride?.id, 'isRequested:', isRequested, 'requesting:', requesting);
@@ -231,7 +235,11 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
       <View style={styles.creatorContainer}>
         <TouchableOpacity
           style={styles.creatorRow}
+<<<<<<< HEAD
           onPress={() => creator?.handle && router.push(`user/${creator.handle}`)}
+=======
+          onPress={() => router.push(`/user/${creator.handle}`)}
+>>>>>>> 336be2c1f4079923bcf50547ca694e33982a6197
         >
           <Text style={{ fontSize: 30 }}>👤 </Text>
           <View>
@@ -242,6 +250,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
 
         {(join || ongoing) && !isOwnRide && (
           <View style={styles.contactRow}>
+<<<<<<< HEAD
             <TouchableOpacity 
               style={{ paddingHorizontal: 10, marginRight: 15 }} 
               onPress={() => {
@@ -257,6 +266,9 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
                 });
               }}
             >
+=======
+            <TouchableOpacity style={{ paddingHorizontal: 10, marginRight: 15 }} onPress={() => router.push({ pathname: '/chat/chatScreen', params: { handle: creator.handle } })}>
+>>>>>>> 336be2c1f4079923bcf50547ca694e33982a6197
               <Ionicons name="chatbubble-ellipses" size={22} color="#e63e4c" />
             </TouchableOpacity>
             <StyledLink type="phone" value={creator.phone} style={{ marginVertical: 0 }} />
@@ -341,11 +353,11 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
           <Text style={styles.transportText}>{ride.transport}</Text>
         </View>
         <View style={styles.rideColumn}>
-          <Text>BDT {ride.fare}</Text>
+          <Text>৳ {ride.fare}</Text>
         </View>
       </View>
 
-      {/* Fare Breakdown */}
+      {/* Fare Breakdown 
       <View style={styles.subtitle}>
         <TouchableOpacity style={{ flexDirection: 'row' }} onPress={() => setShowBreakdown(!showBreakdown)}>
           <Text style={[styles.rideText, { fontWeight: 'bold' }]}>Fare Breakdown </Text>
@@ -360,7 +372,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
               <Text style={styles.rideText}>{creator.name}</Text>
             </View>
             <View style={styles.rideColumn}>
-              <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>BDT {ride.fare}</Text>
+              <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>৳ {ride.fare}</Text>
             </View>
           </View>
 
@@ -370,12 +382,13 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
                 <Text style={styles.rideText}>{partner.name}</Text>
               </View>
               <View style={styles.rideColumn}>
-                <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>BDT {ride.fare}</Text>
+                <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>৳ {ride.fare}</Text>
               </View>
             </View>
           ))}
         </BorderView>
       )}
+      */}
     </Card>
   );
 }

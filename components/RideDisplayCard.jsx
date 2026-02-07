@@ -14,7 +14,7 @@ import { useSearch } from '../context/SearchContext';
 import { useUser } from '../context/UserContext';
 import { useRide } from '../context/RideContext';
 
-export default function RideDisplayCard({ ride, join = false, create = false, ongoing = false, onPress }) {
+export default function RideDisplayCard({ ride, style, join = false, create = false, ongoing = false, previous = false, onPress }) {
   const [isRequested, setIsRequested] = useState(false);
   const [joinStatus, setJoinStatus] = useState(null);
   const [isCompleted, setIsCompleted] = useState(false);
@@ -148,7 +148,7 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
   };
 
   return (
-    <CardButton onPress={onPress} disabled={onPress ? false : true}>
+    <CardButton style={style} onPress={onPress} disabled={onPress ? false : true}>
 
     {(join || create) && (ride.gender != 'Any') && (
         <View
@@ -163,7 +163,7 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
       )}
 
       {/* Ride creator */}
-      {(join || create || ongoing) && (
+      {(!previous) && (
         <View style={styles.creatorRow}>
           <Text style={{ fontSize: 30 }}>👤 </Text>
           <View>
@@ -201,7 +201,7 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
       
 
       {/* Transport, seats, fare */}
-      {ride.transport && (
+      {(ride.transport && !previous && !ongoing) && (
         <View style={styles.transportContainer}>
           <View style={{ width: '33%', flex: 1, alignItems: 'center' }}>
             <Text style={{ fontSize: 12 }}>Transport</Text>
@@ -229,13 +229,13 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
             {ride.fare === 'TBA' ? (
               <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>TBA</Text>
             ) : (
-              <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>BDT {ride.fare}</Text>
+              <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>৳ {ride.fare}</Text>
             )}
           </View>
         </View>
       )}
       
-
+      {/*
       {join && (
         <Button
           style={[{ marginTop: 10 }, (isRequested || requesting || isFull || isGenderRestricted) && { backgroundColor: '#ababab' }]}
@@ -253,6 +253,7 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
           disabled={isRequested || requesting || isFull || isGenderRestricted}
         />
       )}
+      */}
 
       {ongoing && (
         <Button

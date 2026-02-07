@@ -1,15 +1,20 @@
-import { Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import { RideProvider } from '../../context/RideContext';
 import { SearchProvider } from '../../context/SearchContext';
+<<<<<<< HEAD
 import { UserProvider } from '../../context/UserContext';
 import { ChatProvider } from '../../context/ChatContext';
 import DashboardHeader from '../../components/AppHeader';
 import Entypo from '@expo/vector-icons/Entypo';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+=======
+import { ThemeProvider } from '../../context/ThemeContext';
+>>>>>>> 336be2c1f4079923bcf50547ca694e33982a6197
 
-export default function TabsLayout() {
+export default function AppLayout() {
   return (
+<<<<<<< HEAD
     <SearchProvider>
       <UserProvider>
         <RideProvider>
@@ -100,3 +105,39 @@ export default function TabsLayout() {
       </UserProvider>
     </SearchProvider>
       );}
+=======
+    <ThemeProvider>
+      <SearchProvider>
+        <RideProvider>
+          <Stack>
+            <Stack.Screen
+              name="(tabs)"
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="ride/[id]"
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="user/[handle]"
+              options={{
+                headerShown: false,
+              }}
+            />
+          <Stack.Screen
+              name="chat/chatScreen"
+              options={{
+                headerShown: false,
+              }}
+            />
+          </Stack>
+        </RideProvider>
+      </SearchProvider>
+    </ThemeProvider>
+  );
+}
+>>>>>>> 336be2c1f4079923bcf50547ca694e33982a6197

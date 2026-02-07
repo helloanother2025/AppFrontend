@@ -12,7 +12,7 @@ export function StyledTitle({ children, style, ...rest }) {
 const styles = StyleSheet.create({
   title: {
     fontWeight: 'bold',
-    fontSize: 24,
-    marginTop: 5,
+    fontSize: 28,
+    marginTop: 12,
   },
 });

@@ -5,7 +5,7 @@
     "destination": { "name": "Islamic University of Technology, Boardbazar", "coords": { "lat": 23.948353860919553, "lng":  90.37927342914683 } },
     "creator": { "name": "Saba Atharique", "handle": "@saba130" },
     "partners": [
-      { "name": "Ridita Alam", "handle": "@ridita110",  "start": { "name": "BNS Center, Uttara", "coords": { "lat": 23.87113474446341, "lng":  90.40017455524504 } }, "destination": { "name": "Islamic University of Technology, Boardbazar", "coords": { "lat": 23.948353860919553, "lng":  90.37927342914683 } } }
+      { "name": "Ridita Alam", "handle": "@ridita110",  "start": { "name": "Tongi Govt. College", "coords": { "lat": 23.909294067535512, "lng":  90.39691727613335 } }, "destination": { "name": "Islamic University of Technology, Boardbazar", "coords": { "lat": 23.948353860919553, "lng":  90.37927342914683 } } }
     ],
     "date": { "day": "7 October", "time": "2:30 PM" },
     "fare": "173.33",
