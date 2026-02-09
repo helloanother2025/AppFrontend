@@ -11,7 +11,7 @@ export function StyledBorderText(props) {
 const styles = StyleSheet.create({
   borderText: {
     borderRadius: 16,
-    borderWidth: 1,     
+    borderWidth: 0.8,     
     borderColor: '#ababab',
     paddingVertical: 6,
     paddingHorizontal: 12,

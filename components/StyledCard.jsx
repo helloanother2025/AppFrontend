@@ -25,7 +25,7 @@ export function StyledCard(props) {
 const styles = StyleSheet.create({
   card: {
     borderRadius: 16,
-    borderWidth: 1,
+    borderWidth: 0.8,
     padding: 14,
     marginVertical: 10,
     width: '100%',

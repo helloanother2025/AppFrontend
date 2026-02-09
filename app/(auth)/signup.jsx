@@ -439,6 +439,7 @@ const styles = StyleSheet.create({
   },
   label: {
     marginBottom: 6,
+    
   },
   input: {
     width: '100%',

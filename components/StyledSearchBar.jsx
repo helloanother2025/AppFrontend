@@ -1,8 +1,10 @@
+import React from 'react';
 import { TextInput, StyleSheet } from 'react-native'
 
-export function StyledSearchBar(props) {
-    return <TextInput style={[styles.searchBar, props.style]} {...props} />
-}
+export const StyledSearchBar = React.forwardRef((props, ref) => {
+    const { style, ...rest } = props
+    return <TextInput ref={ref} {...rest} style={[styles.searchBar, style]} />
+});
 
 const styles = StyleSheet.create({
     searchBar: {
@@ -11,8 +13,8 @@ const styles = StyleSheet.create({
       borderRadius: 16,
       padding: 10,
       marginVertical: 8,
-      borderWidth: 1,
-      borderColor: '#b3b3b3',
+      borderWidth: 0.8,
+      borderColor: '#ababab',
       fontSize: 16,
       fontFamily: 'Montserrat-Regular'
     }

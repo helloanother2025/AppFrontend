@@ -35,7 +35,9 @@ export default function RideCreated() {
 
       try {
         hasSubmittedRef.current = true;
-        const startTime = new Date().toISOString();
+        // Use the fullDate from rideData, which contains the selected or "leave now" date/time
+        // Ensure it's an ISO string, which we've already handled in chooseDate.jsx
+        const startTime = rideData.fullDate;
         
         // Map transport modes to database enum values
         const transportMap = {

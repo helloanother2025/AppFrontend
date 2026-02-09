@@ -1,11 +1,13 @@
+import React from "react";
 import { ScrollView, StyleSheet } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 
-export function StyledScrollView(props) {
+export const StyledScrollView = React.forwardRef((props, ref) => {
   const { theme } = useTheme ? useTheme() : { theme: 'light' };
   const isDark = theme === 'dark';
   return (
     <ScrollView
+      ref={ref}
       style={[
         styles.scrollView,
         { backgroundColor: isDark ? '#181c22' : '#f7f7f7' },
@@ -16,17 +18,19 @@ export function StyledScrollView(props) {
         { backgroundColor: isDark ? '#181c22' : '#f7f7f7' },
         props.contentContainerStyle,
       ]}
+      {...props}
     >
       {props.children}
     </ScrollView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   scrollView: {
     padding: 25,
     paddingTop: 10,
-    marginBottom: 60,
+    paddingBottom: 60,
+    marginBottom: 90,
   },
   contentContainer: {
     alignItems: 'flex-start',

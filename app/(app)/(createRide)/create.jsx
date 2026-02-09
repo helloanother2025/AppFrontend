@@ -48,7 +48,7 @@ export default function CreateRide() {
               preferences: '',
               routePolyline: ''
             });
-            router.push('/chooseStart');
+            router.push('/chooseRoute');
           }}
         />
     

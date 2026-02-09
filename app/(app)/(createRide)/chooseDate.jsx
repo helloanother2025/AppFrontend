@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView';
@@ -15,7 +14,7 @@ export default function TimeDetails() {
   const router = useRouter();
   const { rideData, setRideData } = useRide();
   const [selection, setSelection] = useState('now');
-  const [date, setDate] = useState(null);
+  const [date, setDate] = useState(rideData.fullDate ? new Date(rideData.fullDate) : null);
 
 
   const handleNext = () => {
@@ -23,7 +22,7 @@ export default function TimeDetails() {
       const now = new Date();
       const day = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
       const time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
-      setRideData({ ...rideData, date: { day, time } });
+      setRideData({ ...rideData, date: { day, time }, fullDate: now.toISOString() });
     } else if (selection === 'later') {
       if (!rideData.date.day || !rideData.date.time) {
         alert('Please select a date and time');
@@ -38,7 +37,7 @@ export default function TimeDetails() {
     setDate(currentDate);
     const day = currentDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
     const time = currentDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
-    setRideData({ ...rideData, date: { day, time } });
+    setRideData({ ...rideData, date: { day, time }, fullDate: currentDate.toISOString() });
   };
   
 
