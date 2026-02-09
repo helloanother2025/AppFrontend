@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StyledText as Text } from '../../components/StyledText';
 import { StyledTitle as Title } from '../../components/StyledTitle';
 import { StyledButton as Button } from '../../components/StyledButton';
 import { StyledScrollView as ScrollView } from '../../components/StyledScrollView';
+import { StyledSearchBar as TextInput } from '../../components/StyledSearchBar'
 import { authAPI } from '../../src/api/auth';
 import { usersAPI } from '../../src/api/users';
 import * as SecureStore from 'expo-secure-store';
@@ -54,7 +55,6 @@ export default function Login() {
       <View style={styles.fieldGroup}>
         <Text style={styles.label}>Email</Text>
         <TextInput
-          style={styles.input}
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -66,7 +66,6 @@ export default function Login() {
       <View style={styles.fieldGroup}>
         <Text style={styles.label}>Password</Text>
         <TextInput
-          style={styles.input}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -76,7 +75,7 @@ export default function Login() {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <Button title={loading ? 'Signing in...' : 'Sign In'} onPress={handleLogin} disabled={loading} style={styles.button} />
+      <Button title={loading ? 'Logging in...' : 'Log In'} onPress={handleLogin} disabled={loading} style={styles.button} />
 
       {loading && <ActivityIndicator size="small" color="#e63e4c" />}
 
@@ -90,7 +89,7 @@ export default function Login() {
 
 const styles = StyleSheet.create({
   headerSpacer: {
-    height: 50,
+    height: 100,
   },
   fieldGroup: {
     width: '100%',

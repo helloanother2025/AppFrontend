@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Image, Alert } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StyledText as Text } from '../../components/StyledText';
 import { StyledTitle as Title } from '../../components/StyledTitle';
 import { StyledButton as Button } from '../../components/StyledButton';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyledScrollView as ScrollView } from '../../components/StyledScrollView';
+import { StyledSearchBar as TextInput } from '../../components/StyledSearchBar'
 import { authAPI } from '../../src/api/auth';
 import { usersAPI } from '../../src/api/users';
 import * as SecureStore from 'expo-secure-store';
@@ -29,8 +30,61 @@ export default function Signup() {
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
 
-  const goNext = () => setStep((s) => Math.min(5, s + 1));
-  const goBack = () => setStep((s) => Math.max(1, s - 1));
+  const validateStep = () => {
+    setError('');
+    switch (step) {
+      case 1:
+        if (!firstName.trim() || !lastName.trim() || !phone.trim() || !email.trim()) {
+          setError('Please fill in all required fields.');
+          return false;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          setError('Please enter a valid email address.');
+          return false;
+        }
+        if (!/^\d+$/.test(phone.trim()) || phone.trim().length < 10) {
+          setError('Please enter a valid phone number.');
+          return false;
+        }
+        break;
+      case 2:
+        if (!password.trim() || !confirmPassword.trim()) {
+          setError('Please fill in all required.');
+          return false;
+        }
+        if (password !== confirmPassword) {
+          setError('Passwords do not match.');
+          return false;
+        }
+        if (password.length < 6) {
+          setError('Password must be at least 6 characters long.');
+          return false;
+        }
+        break;
+      case 3:
+        if (!gender.trim()) {
+          setError('Please fill in all required fields.');
+          return false;
+        }
+        break;
+      case 4:
+        // No required fields for step 4 (fb is optional)
+        break;
+      default:
+        break;
+    }
+    return true;
+  };
+
+  const goNext = () => {
+    if (validateStep()) {
+      setStep((s) => Math.min(5, s + 1));
+    }
+  };
+  const goBack = () => {
+    setError('');
+    setStep((s) => Math.max(1, s - 1));
+  };
 
   const handleSignup = async () => {
     setError('');
@@ -139,24 +193,22 @@ export default function Signup() {
   return (
     <ScrollView>
       <View style={styles.headerSpacer} />
-      <Title>Create account</Title>
+      <Title>Get started</Title>
 
       {step === 1 && (
         <>
           <View style={styles.row}>
             <View style={[styles.fieldGroup, styles.half]}>
-              <Text style={styles.label}>First name</Text>
+              <Text style={styles.label}>First name <Text style={styles.requiredIndicator}>*</Text></Text>
               <TextInput
-                style={styles.input}
                 value={firstName}
                 onChangeText={setFirstName}
                 placeholder="First"
               />
             </View>
             <View style={[styles.fieldGroup, styles.half, styles.halfRight]}>
-              <Text style={styles.label}>Last name</Text>
+              <Text style={styles.label}>Last name <Text style={styles.requiredIndicator}>*</Text></Text>
               <TextInput
-                style={styles.input}
                 value={lastName}
                 onChangeText={setLastName}
                 placeholder="Last"
@@ -165,9 +217,8 @@ export default function Signup() {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Phone</Text>
+            <Text style={styles.label}>Phone <Text style={styles.requiredIndicator}>*</Text></Text>
             <TextInput
-              style={styles.input}
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
@@ -176,9 +227,8 @@ export default function Signup() {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>Email <Text style={styles.requiredIndicator}>*</Text></Text>
             <TextInput
-              style={styles.input}
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -187,18 +237,17 @@ export default function Signup() {
             />
           </View>
 
-          <View style={styles.stepRow}>
-            <Button title="Next" onPress={goNext} style={styles.stepButton} />
-          </View>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <Button title="Next" onPress={goNext} style={[{marginTop: 20, width: '100%', alignSelf: 'flex-end'}]} />
+
         </>
       )}
 
       {step === 2 && (
         <>
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>Password <Text style={styles.requiredIndicator}>*</Text></Text>
             <TextInput
-              style={styles.input}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -207,15 +256,16 @@ export default function Signup() {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Confirm Password</Text>
+            <Text style={styles.label}>Confirm Password <Text style={styles.requiredIndicator}>*</Text></Text>
             <TextInput
-              style={styles.input}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
               placeholder="••••••••"
             />
           </View>
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <View style={styles.stepRow}>
             <Button title="Back" onPress={goBack} style={styles.stepButton} />
@@ -227,7 +277,7 @@ export default function Signup() {
       {step === 3 && (
         <>
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Gender</Text>
+            <Text style={styles.label}>Gender <Text style={styles.requiredIndicator}>*</Text></Text>
             <View style={styles.radioRow}>
               {['Male', 'Female', 'Other'].map((opt) => (
                 <TouchableOpacity
@@ -244,7 +294,6 @@ export default function Signup() {
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>University</Text>
             <TextInput
-              style={styles.input}
               value={university}
               onChangeText={setUniversity}
               placeholder="Your university"
@@ -254,12 +303,13 @@ export default function Signup() {
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Department</Text>
             <TextInput
-              style={styles.input}
               value={department}
               onChangeText={setDepartment}
               placeholder="Your department"
             />
           </View>
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <View style={styles.stepRow}>
             <Button title="Back" onPress={goBack} style={styles.stepButton} />
@@ -273,7 +323,6 @@ export default function Signup() {
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Facebook (optional)</Text>
             <TextInput
-              style={styles.input}
               value={fb}
               onChangeText={setFb}
               placeholder="facebook.com/username"
@@ -282,7 +331,7 @@ export default function Signup() {
 
           <View style={styles.stepRow}>
             <Button title="Back" onPress={goBack} style={styles.stepButton} />
-            <Button title="Next" onPress={goNext} style={styles.stepButton} />
+            <Button title="Skip" onPress={goNext} style={styles.stepButton} />
           </View>
         </>
       )}
@@ -290,7 +339,7 @@ export default function Signup() {
       {step === 5 && (
         <>
           <View style={styles.fieldGroup}>
-            <Text style={styles.profileTitle}>Profile pic</Text>
+            <Text style={styles.label}>Profile picture</Text>
             <View style={styles.profilePicWrapper}>
               <View style={styles.profilePicCircle}>
                 {profileImage ? (
@@ -309,8 +358,6 @@ export default function Signup() {
                 <Ionicons name="image" size={22} color="#333" />
               </TouchableOpacity>
             </View>
-
-            <Text style={styles.skipText}>Skip for now</Text>
           </View>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -318,7 +365,7 @@ export default function Signup() {
           <View style={styles.stepRow}>
             <Button title="Back" onPress={goBack} style={styles.stepButton} />
             <Button
-              title={loading ? '...' : '→'}
+              title={loading ? '...' : 'Skip'}
               onPress={handleSignup}
               disabled={loading}
               style={styles.stepButton}
@@ -331,7 +378,7 @@ export default function Signup() {
 
       <TouchableOpacity onPress={() => router.replace('/(auth)/login')} style={styles.linkRow}>
         <Text>Already have an account? </Text>
-        <Text style={styles.linkText}>Sign in</Text>
+        <Text style={styles.linkText}>Log in</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -339,7 +386,7 @@ export default function Signup() {
 
 const styles = StyleSheet.create({
   headerSpacer: {
-    height: 50,
+    height: 100,
   },
   row: {
     flexDirection: 'row',
@@ -356,7 +403,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   stepButton: {
-    width: '48%',
+    width: '42%',
   },
   radioRow: {
     flexDirection: 'row',
@@ -369,7 +416,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#000',
+    borderColor: '#b3b3b3',
     backgroundColor: '#fff',
   },
   radioPillActive: {
@@ -408,7 +455,7 @@ const styles = StyleSheet.create({
   },
   error: {
     color: '#e63e4c',
-    marginTop: 8,
+    marginTop: 16,
   },
   mutedText: {
     color: '#888',
@@ -464,5 +511,8 @@ const styles = StyleSheet.create({
   linkText: {
     color: '#e63e4c',
     fontWeight: 'bold',
+  },
+  requiredIndicator: {
+    color: '#e63e4c',
   },
 });

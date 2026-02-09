@@ -28,10 +28,10 @@ const Home = () => {
     if (fontsLoaded) {
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 100,
+        duration: 500,
         useNativeDriver: true,
       }).start(() => {
-        setTimeout(() => router.replace('/(auth)/login'), 500);
+        setTimeout(() => router.replace('/(auth)/login'), 1100);
       });
     }
   }, [fontsLoaded]);
@@ -54,12 +54,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f7f7f7',
+    backgroundColor: '#e63e4c',
   },
   title: {
     fontWeight: 'bold',
-    color: '#e63e4c',
-    fontSize: 24,
+    color: '#f7f7f7',
+    fontSize: 38,
     textAlign: 'center',
   },
 });

@@ -6,13 +6,13 @@ export function StyledSearchBar(props) {
 
 const styles = StyleSheet.create({
     searchBar: {
-      width: '100%',
+      alignSelf: 'stretch',
       backgroundColor: '#fff',
       borderRadius: 16,
       padding: 10,
       marginVertical: 8,
       borderWidth: 1,
-      borderColor: '#000',
+      borderColor: '#b3b3b3',
       fontSize: 16,
       fontFamily: 'Montserrat-Regular'
     }
