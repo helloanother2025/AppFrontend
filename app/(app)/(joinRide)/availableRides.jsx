@@ -11,330 +11,119 @@ import RideCard from '../../../components/RideDisplayCard';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { useSearch } from '../../../context/SearchContext';
-import { useRouter } from 'expo-router';
 import { useRide } from '../../../context/RideContext';
-import { useUser } from '../../../context/UserContext';
-import { useFocusEffect } from '@react-navigation/native';
-import { parseServerDate } from '../../../src/utils/date';
-
-const toRad = (x) => (x * Math.PI) / 180;
-function normLatLng(p) {
-  if (!p) return null;
-  return {
-    latitude: p.latitude ?? p.lat,
-    longitude: p.longitude ?? p.lng,
-  };
-}
-function haversineKm(aIn, bIn) {
-  const a = normLatLng(aIn);
-  const b = normLatLng(bIn);
-  if (!a || !b) return Infinity;
-  const R = 6371;
-  const dLat = toRad(b.latitude - a.latitude);
-  const dLon = toRad(b.longitude - a.longitude);
-  const lat1 = toRad(a.latitude);
-  const lat2 = toRad(b.latitude);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-function xyAt(refLat, pIn) {
-  const p = normLatLng(pIn);
-  const x = toRad(p.longitude) * Math.cos(toRad(refLat));
-  const y = toRad(p.latitude);
-  return { x, y };
-}
-function projectPointToSegment(pIn, vIn, wIn) {
-  const p = normLatLng(pIn);
-  const v = normLatLng(vIn);
-  const w = normLatLng(wIn);
-  if (!p || !v || !w) {
-    return { distKm: Infinity, t: 0, proj: null, segLenKm: 0 };
-  }
-  const refLat = (v.latitude + w.latitude) / 2;
-  const P = xyAt(refLat, p);
-  const V = xyAt(refLat, v);
-  const W = xyAt(refLat, w);
-  const vx = W.x - V.x;
-  const vy = W.y - V.y;
-  const len2 = vx * vx + vy * vy;
-  let t = 0;
-  if (len2 > 0) {
-    t = ((P.x - V.x) * vx + (P.y - V.y) * vy) / len2;
-    t = Math.max(0, Math.min(1, t));
-  }
-  const proj = {
-    latitude: v.latitude + t * (w.latitude - v.latitude),
-    longitude: v.longitude + t * (w.longitude - v.longitude),
-  };
-  const distKm = haversineKm(p, proj);
-  const segLenKm = haversineKm(v, w);
-  return { distKm, t, proj, segLenKm };
-}
-function projectPointToRoute(locationIn, routePolyline, thresholdKm) {
-  const location = normLatLng(locationIn);
-  if (!location || !routePolyline) {
-    return { onRoute: false, posKm: -1, minDistKm: Infinity };
-  }
-  const routeCoords = polyline
-    .decode(routePolyline)
-    .map(([lat, lng]) => ({ latitude: lat, longitude: lng }));
-  if (routeCoords.length < 2) {
-    return { onRoute: false, posKm: -1, minDistKm: Infinity };
-  }
-  let bestMinDist = Infinity;
-  let bestPosKm = 0;
-  let cumulative = 0;
-  for (let i = 0; i < routeCoords.length - 1; i++) {
-    const v = routeCoords[i];
-    const w = routeCoords[i + 1];
-    const { distKm, t, segLenKm } = projectPointToSegment(location, v, w);
-    if (distKm < bestMinDist) {
-      bestMinDist = distKm;
-      bestPosKm = cumulative + t * segLenKm;
-    }
-    cumulative += segLenKm;
-  }
-  return {
-    onRoute: bestMinDist <= thresholdKm,
-    posKm: bestPosKm,
-    minDistKm: bestMinDist,
-  };
-}
-
+import { useRouter } from 'expo-router';
 
 
 const AvailableRides = () => {
   const router = useRouter();
-  const { searchData, resetSearchData } = useSearch();
+  const { searchData, clearSearch } = useSearch();
+  const { rides, fetchAvailableRides, loading } = useRide(); // Use useRide hook
   const scrollRef = useRef(null);
-  const { rides: availableRides, fetchAvailableRides } = useRide();
-  const { currentUser } = useUser();
 
   const [showSearch, setShowSearch] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [date, setDate] = useState(null);
   const [selectedTransport, setSelectedTransport] = useState(null);
   const [selectedGender, setSelectedGender] = useState(null);
-  const [leaveNow, setLeaveNow] = useState(false);
-  const [displayedRides, setDisplayedRides] = useState([]);
-  const [sortRecent, setSortRecent] = useState(false);
+  const [leaveNow, setLeaveNow] = useState(true);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const getRideStartDate = (ride) => {
-    const raw = ride?.start_time ?? ride?.startTime ?? ride?.start_time_utc ?? ride?.startTimeUtc ?? ride?.dateTime;
-    if (!raw) return null;
-    const parsed = raw instanceof Date ? raw : parseServerDate(raw);
-    if (Number.isNaN(parsed.getTime())) return null;
-    return parsed;
-  };
+  const RADIUS_KM = 3; // Default search radius for backend
 
-  const getRideCreatedDate = (ride) => {
-    const raw = ride?.createdAt ?? ride?.created_at ?? ride?.createdAtUtc ?? ride?.created_at_utc;
-    if (!raw) return null;
-    const parsed = raw instanceof Date ? raw : parseServerDate(raw);
-    if (Number.isNaN(parsed.getTime())) return null;
-    return parsed;
-  };
-
-  const filterRides = async (ridesList) => {
-    const RADIUS_THRESHOLD_KM = 5; // near endpoints
-    const ROUTE_THRESHOLD_KM = 2;  // near the route
-    const ORDER_EPS_KM = 0.05;     // tolerance
-    const { start, destination } = searchData;
-    const startCoords = start?.coords;
-    const destCoords = destination?.coords;
-    let filtered = ridesList;
-    if (startCoords && destCoords) {
-      filtered = ridesList.filter((ride) => {
-        const ridePolyline = ride.routePolyline;
-
-        // 1) projections to route
-        const startProj = projectPointToRoute(
-          { latitude: startCoords.latitude ?? startCoords.lat, longitude: startCoords.longitude ?? startCoords.lng },
-          ridePolyline,
-          ROUTE_THRESHOLD_KM
-        );
-        const destProj = projectPointToRoute(
-          { latitude: destCoords.latitude ?? destCoords.lat, longitude: destCoords.longitude ?? destCoords.lng },
-          ridePolyline,
-          ROUTE_THRESHOLD_KM
-        );
-
-        // 2) endpoint fallbacks
-        const startNearStart = haversineKm(ride.start.coords, startCoords) <= RADIUS_THRESHOLD_KM;
-        const destNearEnd   = haversineKm(ride.destination.coords, destCoords) <= RADIUS_THRESHOLD_KM;
-
-        const startOK = startProj.onRoute || startNearStart;
-        const destOK  = destProj.onRoute  || destNearEnd;
-
-        // 3) ordering only when both points are on the route
-        let orderOK = true;
-        if (startProj.onRoute && destProj.onRoute) {
-          orderOK = startProj.posKm <= destProj.posKm + ORDER_EPS_KM;
-        }
-
-        return startOK && destOK && orderOK;
-      });
-    } else if (startCoords || destCoords) {
-      filtered = ridesList.filter((ride) => {
-        const sMatch = startCoords
-          ? haversineKm(ride.start.coords, startCoords) <= RADIUS_THRESHOLD_KM
-          : true;
-        const dMatch = destCoords
-          ? haversineKm(ride.destination.coords, destCoords) <= RADIUS_THRESHOLD_KM
-          : true;
-        return sMatch && dMatch;
-      });
+  const handleSearch = useCallback(async () => {
+    const filters = {};
+    if (selectedTransport) {
+      filters.transportMode = selectedTransport;
+    }
+    if (selectedGender && selectedGender !== 'Any') {
+      filters.genderPreference = selectedGender;
     }
 
-    // Date and "leave now" filters
+    const now = new Date();
     if (leaveNow) {
-      const now = new Date();
-      const nowPlus = new Date(now.getTime() + 30 * 60 * 1000);
-      filtered = filtered.filter((ride) => {
-        const rideDate = getRideStartDate(ride);
-        return rideDate && rideDate >= now && rideDate <= nowPlus;
-      });
+      // "Leave now": 45 minutes before to 45 minutes after current time
+      const fortyFiveMinutesAgo = new Date(now.getTime() - 45 * 60 * 1000);
+      const fortyFiveMinutesFromNow = new Date(now.getTime() + 45 * 60 * 1000);
+      filters.afterDate = fortyFiveMinutesAgo.toISOString();
+      filters.beforeDate = fortyFiveMinutesFromNow.toISOString();
     } else if (date) {
-      filtered = filtered.filter((ride) => {
-        const rideDate = getRideStartDate(ride);
-        return rideDate && rideDate >= date;
-      });
+      // "Schedule": 2 hours before to 2 hours after the selected date
+      const twoHoursBefore = new Date(date.getTime() - 2 * 60 * 60 * 1000);
+      const twoHoursAfter = new Date(date.getTime() + 2 * 60 * 60 * 1000);
+      filters.afterDate = twoHoursBefore.toISOString();
+      filters.beforeDate = twoHoursAfter.toISOString();
+    }
+    
+    // Add location filters from searchData if available
+    if (searchData.start?.coords) {
+      filters.startLocationLat = searchData.start.coords.latitude ?? searchData.start.coords.lat;
+      filters.startLocationLng = searchData.start.coords.longitude ?? searchData.start.coords.lng;
+      filters.radiusKm = RADIUS_KM; // Apply radius for fuzzy search
+    }
+    if (searchData.destination?.coords) {
+      filters.endLocationLat = searchData.destination.coords.latitude ?? searchData.destination.coords.lat;
+      filters.endLocationLng = searchData.destination.coords.longitude ?? searchData.destination.coords.lng;
+      filters.radiusKm = RADIUS_KM; // Apply radius for fuzzy search
     }
 
-    // Transport, gender, capacity, and own ride filters (case-insensitive)
-    filtered = filtered.filter((ride) => {
-      const status = String(ride.status ?? ride.currentStatus ?? ride.current_status ?? '').toLowerCase();
-      if (['completed', 'cancelled', 'expired', 'ended'].includes(status)) return false;
-
-      // Exclude rides created by the current user
-      const creatorId = ride?.creator_id ?? ride?.creator?.user_id ?? ride?.creator?.id;
-      const currentUserId = currentUser?.user_id ?? currentUser?.id;
-      if (creatorId != null && currentUserId != null && String(creatorId) === String(currentUserId)) return false;
-
-      const availableSeats = Number(ride.availableSeats ?? ride.available_seats ?? ride.seats);
-      if (Number.isFinite(availableSeats) && availableSeats <= 0) return false;
-
-      const maxPassengers = Number(ride.totalPassengers ?? 0);
-      const currentPassengers = Array.isArray(ride.partners) ? ride.partners.length : 0;
-      if (maxPassengers > 0 && currentPassengers >= maxPassengers) return false;
-
-      if (maxPassengers > 0 && maxPassengers - currentPassengers <= 0) return false;
-
-      if (selectedTransport) {
-        const rideTransport = ride.transport ?? ride.transport_mode ?? ride.transportMode;
-        if (!rideTransport || rideTransport.toLowerCase() !== selectedTransport.toLowerCase()) return false;
-      }
-      if (selectedGender && selectedGender !== 'Any') {
-        const rideGender = ride.gender ?? ride.gender_preference ?? ride.genderPreference;
-        if (!rideGender || rideGender.toLowerCase() !== selectedGender.toLowerCase()) return false;
-      }
-      return true;
-    });
-
-    if (sortRecent) {
-      filtered = [...filtered].sort((a, b) => {
-        const aDate = getRideCreatedDate(a)?.getTime?.() ?? getRideStartDate(a)?.getTime?.() ?? 0;
-        const bDate = getRideCreatedDate(b)?.getTime?.() ?? getRideStartDate(b)?.getTime?.() ?? 0;
-        return bDate - aDate;
-      });
-    }
-
-    return filtered;
-  };
+    await fetchAvailableRides(filters);
+  }, [selectedTransport, selectedGender, date, leaveNow, searchData, fetchAvailableRides]);
 
   useEffect(() => {
-    fetchAvailableRides({ limit: 50 });
-  }, [fetchAvailableRides]);
-
-  useFocusEffect(
-    useCallback(() => {
-      // Show full search form if either start or destination is filled
-      if (searchData.start?.name || searchData.destination?.name) {
-        setShowSearch(false);
-      } else {
-        setShowSearch(true);
-      }
-      return () => {};
-    }, [searchData])
-  );
-
-  useEffect(() => {
-    (async () => {
-      const filtered = await filterRides(availableRides);
-      setDisplayedRides(filtered);
-
-      if (scrollRef.current) {
+    handleSearch();
+    if (scrollRef.current) {
         setTimeout(() => scrollRef.current.scrollToEnd({ animated: true }), 150);
-      }
-    })();
-  }, [selectedTransport, selectedGender, date, leaveNow, sortRecent, searchData, availableRides]);
-
-  const onDateChange = (selectedDate) => setDate(selectedDate || date);
-
-  const buildFilterParams = () => {
-    const params = {};
-    if (selectedTransport) params.transportMode = selectedTransport;
-    if (selectedGender && selectedGender !== 'Any') params.genderPreference = selectedGender;
-    if (leaveNow) {
-      const now = new Date();
-      const nowPlus = new Date(now.getTime() + 30 * 60 * 1000);
-      params.afterDate = now.toISOString();
-      params.beforeDate = nowPlus.toISOString();
-    } else if (date) {
-      params.afterDate = date.toISOString();
     }
-    return params;
-  };
+  }, [selectedTransport, selectedGender, date, leaveNow, searchData, handleSearch]); // Depend on handleSearch, which now encapsulates all filter states
 
-  const handleSearch = async () => {
-    await fetchAvailableRides({ limit: 50, ...buildFilterParams() });
-    const filtered = await filterRides(availableRides);
-    setDisplayedRides(filtered);
-    setShowSearch(true);
+  const onDateChange = (selectedDate) => {
+    setDate(selectedDate || date);
+    setShowDatePicker(false);
   };
 
   const toggleLeaveNow = () => {
-    setLeaveNow(!leaveNow);
+    const newLeaveNow = !leaveNow;
+    setLeaveNow(newLeaveNow);
+    if (!newLeaveNow) {
+      setShowDatePicker(true);
+    } else {
+      setDate(null);
+    }
   }
 
-  const clearFilters = () => {
+  const handleDatePickerCancel = () => {
+    setShowDatePicker(false);
+    if (!date) {
+      setLeaveNow(true);
+    }
+  }
+
+  const clearFilters = useCallback(() => {
     setSelectedTransport(null);
     setSelectedGender(null);
     setDate(null);
-    setLeaveNow(false);
-    setSortRecent(false);
-    setDisplayedRides(availableRides);
-  };
+    setLeaveNow(true);
+    clearSearch(); // Clear location search data
+  }, [clearSearch]);
 
   return (
     <ScrollView innerRef={scrollRef}>
-      <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%'}}>
-        <Title>Search for a ride</Title>
-        <TouchableOpacity
-          style={{marginLeft: 10, padding: 4, borderRadius: 6, backgroundColor: '#111', width: 28, height: 28, alignItems: 'center', justifyContent: 'center'}}
-          onPress={() => {
-            resetSearchData();
-            setShowSearch(true);
-          }}
-        >
-          <FontAwesome name="refresh" size={14} color="#fff" />
-        </TouchableOpacity>
-      </View>
+      <Title>Search for a ride</Title>
 
-      {showSearch && <Search title="Where to today?" onPress={() => setShowSearch(false)} />}
+      <Search title="Where to today?" onPress={() => router.push('/searchRoute')} />
 
       {!showSearch && (
         <View style={styles.dropdownContainer}>
           <Search
             title={searchData.start?.name || 'Starting point'}
-            onPress={() => router.push('/searchStart')}
+            onPress={() => router.push('/searchRoute')}
           />
           <Search
             title={searchData.destination?.name || 'Destination'}
-            onPress={() => router.push('/searchDest')}
+            onPress={() => router.push('/searchRoute')}
           />
           <StyledDateTimePicker
             style={{ width: '100%' }}
@@ -343,40 +132,80 @@ const AvailableRides = () => {
             mode="datetime"
             onChange={onDateChange}
           />
-          <Button title="Ready to go" onPress={handleSearch} style={{ width: '100%' }} />
         </View>
       )}
 
-      <View style={styles.buttonRow}>
-        <View style={{flexDirection: 'row', alignItems: 'center'}}>
-          <Switch
-            trackColor={{false: '#ababab', true: '#c9c9c9'}}
-            thumbColor={leaveNow ? '#e63e4c' : '#000'}
-            value={leaveNow}
-            onValueChange={toggleLeaveNow}
-          /> 
-          <Text style={{marginLeft: 5, color: leaveNow ? '#e63e4c' : '000'}}>Leave now</Text>
-        </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <View style={styles.controlsContainer}>
+        <View style={styles.scheduleContainer}>
           <TouchableOpacity
-            style={[styles.filterToggle, sortRecent && styles.filterToggleActive]}
-            onPress={() => setSortRecent(!sortRecent)}>
-            <FontAwesome6 name="clock" size={14} color="white" />
-            <Text style={styles.filterToggleText}>Recent</Text>
+            style={[styles.scheduleOption, leaveNow && styles.scheduleOptionActive]}
+            onPress={() => {
+              if (!leaveNow) toggleLeaveNow();
+            }}>
+            <Text style={[styles.scheduleOptionText, leaveNow && styles.scheduleOptionTextActive]}>
+              Leave now
+            </Text>
           </TouchableOpacity>
-
           <TouchableOpacity
-            style={styles.filterToggle}
-            onPress={() => setShowFilters(!showFilters)}>
-            <FontAwesome6 name="sliders" size={14} color="white" />
-            <Text style={styles.filterToggleText}>Filters</Text>
+            style={[styles.scheduleOption, !leaveNow && styles.scheduleOptionActive]}
+            onPress={() => {
+              if (leaveNow) toggleLeaveNow();
+            }}>
+            <Text style={[styles.scheduleOptionText, !leaveNow && styles.scheduleOptionTextActive]}>
+              Schedule
+            </Text>
           </TouchableOpacity>
         </View>
+
+        {!leaveNow && date && (
+          <TouchableOpacity 
+            style={styles.dateButton}
+            onPress={() => setShowDatePicker(true)}>
+            <FontAwesome name="calendar" size={14} color="#e63e4c" />
+            <Text style={styles.dateButtonText}>
+              {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, {date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+            </Text>
+            <FontAwesome name="chevron-right" size={12} color="#e63e4c" />
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          style={[styles.filterToggle, showFilters && styles.filterToggleActive]}
+          onPress={() => setShowFilters(!showFilters)}>
+          <FontAwesome6 name="sliders" size={14} color={showFilters ? "white" : "#333"} />
+          <Text style={[styles.filterToggleText, showFilters && styles.filterToggleTextActive]}>
+            Filters
+          </Text>
+          {(selectedTransport || selectedGender) && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>
+                {(selectedTransport ? 1 : 0) + (selectedGender ? 1 : 0)}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
+      <DateTimePickerModal
+        isVisible={showDatePicker}
+        mode="datetime"
+        date={date || new Date()}
+        onConfirm={onDateChange}
+        onCancel={handleDatePickerCancel}
+      />
+
       {showFilters && (
-        <BorderView style={{ width: '100%' }}>
+        <BorderView style={styles.filtersContainer}>
+          <View style={styles.filterHeader}>
+            <Text style={styles.filterHeaderText}>Filter by:</Text>
+            {(selectedTransport || selectedGender) && (
+              <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
+                <Text style={styles.clearButtonText}>Clear all</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           <View style={styles.filterGroup}>
             <Text style={styles.filterLabel}>Transport</Text>
             <View style={styles.filterOptions}>
@@ -393,20 +222,20 @@ const AvailableRides = () => {
                   {type === 'CNG' ? (
                     <MaterialCommunityIcons
                       name="rickshaw"
-                      size={22}
-                      color={selectedTransport === type ? 'white' : '#444'}
+                      size={18}
+                      color={selectedTransport === type ? 'white' : '#666'}
                     />
                   ) : (
                     <FontAwesome
                       name={type === 'Car' ? 'car' : 'bus'}
                       size={14}
-                      color={selectedTransport === type ? 'white' : '#444'}
+                      color={selectedTransport === type ? 'white' : '#666'}
                     />
                   )}
                   <Text
                     style={[
                       styles.filterChipText,
-                      selectedTransport === type && { color: 'white' },
+                      selectedTransport === type && styles.filterChipTextActive,
                     ]}>
                     {type}
                   </Text>
@@ -431,12 +260,12 @@ const AvailableRides = () => {
                       g === 'Male' ? 'person' : g === 'Female' ? 'person-dress' : 'users'
                     }
                     size={14}
-                    color={selectedGender === g ? 'white' : '#444'}
+                    color={selectedGender === g ? 'white' : '#666'}
                   />
                   <Text
                     style={[
                       styles.filterChipText,
-                      selectedGender === g && { color: 'white' },
+                      selectedGender === g && styles.filterChipTextActive,
                     ]}>
                     {g}
                   </Text>
@@ -444,18 +273,13 @@ const AvailableRides = () => {
               ))}
             </View>
           </View>
-
-          <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
-            <Text style={{ color: '#fff' }}>Clear</Text>
-            <MaterialCommunityIcons name="close" size={14} color="#fff" />
-          </TouchableOpacity>
         </BorderView>
       )}
 
       <Title style={{marginTop: 10}}>Available rides</Title>
 
-      {displayedRides.length > 0 ? (
-        displayedRides.map((ride, index) => (
+      {rides.length > 0 ? (
+        rides.map((ride, index) => (
           <RideCard
             key={index}
             ride={ride}
@@ -466,8 +290,8 @@ const AvailableRides = () => {
       ) : (
         <>
           <Text style={{ marginVertical: 10 }}>No rides found matching your criteria.</Text>
-          <TouchableOpacity style={styles.button} onPress={() => router.push('/chooseStart')}>
-            <Text style={styles.buttonTitle}>Create a Ride</Text>
+          <TouchableOpacity style={styles.button} onPress={() => router.push('/(createRide)/chooseRoute')}>
+            <Text style={styles.buttonTitle}>Create a ride</Text>
             <FontAwesome name="chevron-right" size={14} color="#fff" />
           </TouchableOpacity>
         </>
@@ -508,6 +332,54 @@ const styles = StyleSheet.create({
     alignContent: 'flex-start',
     width: '100%',
   },
+  controlsContainer: {
+    width: '100%',
+    marginBottom: 10,
+  },
+  scheduleContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#e6e6e6',
+    borderRadius: 14,
+    marginBottom: 10,
+  },
+  scheduleOption: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scheduleOptionActive: {
+    backgroundColor: '#e63e4c',
+  },
+  scheduleOptionText: {
+    fontSize: 14,
+    color: '#000',
+  },
+  scheduleOptionTextActive: {
+    color: '#fff',
+    fontWeight: 'semibold',
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignContent: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e63e4c',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  dateButtonText: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#000',
+  },
   buttonRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -518,43 +390,81 @@ const styles = StyleSheet.create({
   filterToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#222',
-    paddingVertical: 6,
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#999',
+    paddingVertical: 8,
     paddingHorizontal: 14,
-    borderRadius: 16,
+    borderRadius: 12,
+    position: 'relative',
   },
   filterToggleActive: {
-    backgroundColor: '#e63e4c',
+    backgroundColor: '#1f1f1f',
+    borderColor: '#1f1f1f',
   },
   filterToggleText: {
-    color: 'white',
     marginLeft: 6,
-    fontSize: 13,
+    fontSize: 14,
+    fontWeight: 'semibold',
+    color: '#000',
+  },
+  filterToggleTextActive: {
+    color: 'white',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#e63e4c',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  filterBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  filtersContainer: {
+    width: '100%',
+    marginTop: 10,
+    marginBottom: 15,
+  },
+  filterHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  filterHeaderText: {
+    fontSize: 16,
+    fontWeight: 'semibold',
+    color: '#000',
   },
   filterGroup: {
-    marginBottom: 10,
+    marginBottom: 16,
   },
   filterLabel: {
-    fontSize: 13,
-    color: '#555',
-    marginBottom: 4,
-    fontWeight: '500',
+    fontSize: 14,
+    color: '#000',
+    marginBottom: 8,
   },
   filterOptions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 8,
   },
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderColor: '#ccc',
+    borderColor: '#e6e6e6',
     borderWidth: 1,
     borderRadius: 20,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    marginRight: 6,
-    marginBottom: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     backgroundColor: 'white',
   },
   filterChipActive: {
@@ -563,18 +473,22 @@ const styles = StyleSheet.create({
   },
   filterChipText: {
     marginLeft: 6,
-    color: '#333',
+    color: '#000',
     fontSize: 13,
+    fontWeight: '500',
+  },
+  filterChipTextActive: {
+    color: 'white',
   },
   clearButton: { 
-    borderRadius: 14,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    flexDirection: 'row',
-    alignSelf: 'flex-end', 
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#888', 
-    width: '30%', 
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#e63e4c',
+  },
+  clearButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
   },
 })

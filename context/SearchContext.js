@@ -8,6 +8,7 @@ const getInitialSearchData = () => ({
   transport: '',
   date: { day: '', time: '' },
   gender: '',
+  routePolyline: null,
 });
 
 export const SearchProvider = ({ children }) => {

@@ -51,6 +51,12 @@ export const ridesAPI = {
       if (filters.genderPreference) params.genderPreference = filters.genderPreference;
       if (filters.afterDate) params.afterDate = filters.afterDate;
       if (filters.beforeDate) params.beforeDate = filters.beforeDate;
+      // New filters for location-based search
+      if (filters.startLocationLat) params.startLocationLat = filters.startLocationLat;
+      if (filters.startLocationLng) params.startLocationLng = filters.startLocationLng;
+      if (filters.endLocationLat) params.endLocationLat = filters.endLocationLat;
+      if (filters.endLocationLng) params.endLocationLng = filters.endLocationLng;
+      if (filters.radiusKm) params.radiusKm = filters.radiusKm;
 
       const response = await withRetry(() =>
         client.get('/rides', { params })

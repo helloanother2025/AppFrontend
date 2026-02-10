@@ -174,7 +174,7 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
             const creatorHandle = ride.creator.handle || ride.creator.username;
             const creatorId = ride?.creator_id ?? ride?.creator?.user_id ?? ride?.creator?.id;
             const currentUserId = currentUser?.user_id ?? currentUser?.id;
-            if (creatorHandle && (!currentUserId || String(creatorId) !== String(currentUserId))) {
+            if (!join && creatorHandle && (!currentUserId || String(creatorId) !== String(currentUserId))) {
               router.push(`/user/${creatorHandle}`);
             }
           }}

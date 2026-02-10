@@ -36,7 +36,20 @@ export const RideProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await ridesAPI.getAvailableRides(filters);
+      const apiFilters = {
+        page: filters.page,
+        limit: filters.limit,
+        transportMode: filters.transportMode,
+        genderPreference: filters.genderPreference,
+        afterDate: filters.afterDate,
+        beforeDate: filters.beforeDate,
+        startLocationLat: filters.startLocationLat,
+        startLocationLng: filters.startLocationLng,
+        endLocationLat: filters.endLocationLat,
+        endLocationLng: filters.endLocationLng,
+        radiusKm: filters.radiusKm,
+      };
+      const data = await ridesAPI.getAvailableRides(apiFilters);
       const normalized = normalizeRideList(data?.rides ?? data ?? []);
       setRides(normalized);
       return normalized;

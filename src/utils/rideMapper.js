@@ -59,12 +59,12 @@ export const normalizeRide = (ride) => {
         ...ride.destination,
         coords: destCoords,
       },
-      creator: {
-        ...ride.creator,
-        user_id: ride.creator.user_id ?? ride.creator.id ?? ride.creator.userId,
-        handle: ensureHandle(ride.creator.handle, ride.creator.username),
-      },
-      date: startTimeValue ? formatRideDate(startTimeValue) : (ride.date ?? formatRideDate(ride.start_time ?? ride.startTime)),
+          creator: {
+            ...ride.creator,
+            user_id: ride.creator.user_id ?? ride.creator.id ?? ride.creator.userId,
+            name: ride.creator.name ?? ride.creator_name ?? 'Unknown', // Added ride.creator_name
+            handle: ensureHandle(ride.creator.handle ?? ride.creator.username ?? ride.creator_username, ride.creator.username ?? ride.creator_username), // Added ride.creator_username
+          },      date: startTimeValue ? formatRideDate(startTimeValue) : (ride.date ?? formatRideDate(ride.start_time ?? ride.startTime)),
       routePolyline: ride.routePolyline ?? ride.route_polyline ?? ride.routePolyline,
       createdAt: ride.createdAt ?? ride.created_at ?? ride.createdAtUtc ?? ride.created_at_utc,
       transport: ride.transport ?? ride.transport_mode ?? ride.transportMode,
@@ -146,7 +146,7 @@ export const normalizeRide = (ride) => {
     creator: {
       name: ride.name ?? ride.creator_name ?? ride.creatorName ?? 'Unknown',
       user_id: ride.creator_id ?? ride.creatorId ?? ride.user_id ?? ride.userId,
-      handle: ensureHandle(ride.username ?? ride.creator_handle ?? ride.creatorHandle, ride.username),
+      handle: ensureHandle(ride.username ?? ride.creator_username ?? ride.creatorHandle, ride.username ?? ride.creator_username),
     },
     partners: Array.isArray(ride.passengers)
       ? ride.passengers.map((p) => ({
