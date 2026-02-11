@@ -215,11 +215,13 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
       
 
       {/* Transport, seats, fare */}
-      {ride.transport && (
+      {ride.transportMode && (
         <View style={styles.transportContainer}>
           <View style={{ width: '33%', flex: 1, alignItems: 'center' }}>
             <Text style={{ fontSize: 12 }}>Transport</Text>
-            <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>{ride.transport}</Text>
+            <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>
+              {ride.transportMode === 'Car' && ride.rideProvider ? `Car (${ride.rideProvider})` : ride.transportMode}
+            </Text>
           </View>
 
           <View style={{ width: '33%', alignItems: 'center' }}>
@@ -251,7 +253,7 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
         <View style={{ width: '100%', alignItems: 'center', marginTop: 10 }}>
           <Button
             style={[
-              { width: '90%' },
+              { width: '100%' },
               (isRequested || requesting || isFull || isGenderRestricted) && { backgroundColor: '#ababab' }
             ]}
             title={

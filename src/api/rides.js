@@ -25,7 +25,7 @@ export const ridesAPI = {
         transportMode: rideData.transportMode,
         availableSeats: rideData.availableSeats,
         fare: parseFloat(rideData.fare),
-        rideProvider: rideData.rideProvider || 'Private',
+        rideProvider: rideData.rideProvider || null,
         genderPreference: rideData.genderPreference ?? null,
         notes: rideData.notes,
         routePolyline: rideData.routePolyline,
@@ -57,6 +57,7 @@ export const ridesAPI = {
       if (filters.endLocationLat) params.endLocationLat = filters.endLocationLat;
       if (filters.endLocationLng) params.endLocationLng = filters.endLocationLng;
       if (filters.radiusKm) params.radiusKm = filters.radiusKm;
+      if (filters.searchType) params.searchType = filters.searchType;
 
       const response = await withRetry(() =>
         client.get('/rides', { params })

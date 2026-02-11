@@ -15,7 +15,7 @@ export const reverseGeocode = async (latitude, longitude) => {
     });
     const data = await response.json();
     
-    console.log('Reverse geocode response:', data);
+    // console.log('Reverse geocode response:', data);
     
     if (data && data.address) {
       // Try to get a readable name from the address components
@@ -57,7 +57,7 @@ export const searchPlaces = async (query) => {
     });
     const data = await response.json();
     
-    console.log('Nominatim response:', data);
+    // console.log('Nominatim response:', data);
     
     if (!data || data.length === 0) {
       console.log('No results from Nominatim');
@@ -79,7 +79,7 @@ export const searchPlaces = async (query) => {
       }
     }));
     
-    console.log('Formatted suggestions:', formatted);
+    // console.log('Formatted suggestions:', formatted);
     return formatted;
   } catch (error) {
     console.error('Error searching places:', error);

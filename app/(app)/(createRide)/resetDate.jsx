@@ -4,7 +4,7 @@ import { StyledScrollView as ScrollView } from '../../../components/StyledScroll
 import { StyledText as Text } from '../../../components/StyledText';
 import { StyledTitle as Title } from '../../../components/StyledTitle';
 import { StyledCardButton as CardButton } from '../../../components/StyledCardButton';
-import { StyledButton as Button } from '../../../components/StyledButton';
+import { StyledNavigatorButton as Button } from '../../../components/StyledNavigatorButton';
 import { useRouter } from 'expo-router';
 import { useRide } from '../../../context/RideContext';
 import { StyledDateTimePicker } from '../../../components/StyledDateTimePicker';
@@ -50,10 +50,10 @@ export default function TimeDetails() {
       <Title>Departure time</Title>
 
       <CardButton onPress={() => setSelection('now')} style={selection === 'now' ? styles.selectedCard : {}}>
-        <Text style={styles.timeText}>Leave now</Text>
+        <Text style={[styles.timeText, selection === 'now' ? {fontWeight: 'semibold', color: '#fff'} : {}]}>Leave now</Text>
       </CardButton>
       <CardButton onPress={() => setSelection('later')} style={selection === 'later' ? styles.selectedCard : {}}>
-        <Text style={styles.timeText}>Schedule for later</Text>
+        <Text style={[styles.timeText, selection === 'later' ? {fontWeight: 'semibold', color: '#fff'} : {}]}>Schedule for later</Text>
       </CardButton>
 
       {selection === 'later' && (
@@ -75,6 +75,7 @@ export default function TimeDetails() {
         {selection && (
           <Button
             title='Next'
+            back={false}
             onPress={handleNext}
             style={{ width: '30%' }}
           ></Button>
@@ -96,8 +97,7 @@ const styles = StyleSheet.create({
     fontSize: 16
   },
   selectedCard: {
-    fontWeight: 'bold',
-    borderWidth: 2,
-    borderColor: '#000',
+    backgroundColor: '#1f1f1f',
+    borderColor: '#1f1f1f',
   }
 })

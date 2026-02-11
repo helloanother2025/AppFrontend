@@ -377,7 +377,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
 
       <View style={styles.rideRow}>
         <View style={styles.rideColumn}>
-          <Text style={styles.transportText}>{ride.transport}</Text>
+          <Text style={styles.transportText}>{ride.transportMode === 'Car' && ride.rideProvider ? `Car (${ride.rideProvider})` : ride.transportMode}</Text>
         </View>
         <View style={styles.rideColumn}>
           <Text>BDT {ride.fare}</Text>

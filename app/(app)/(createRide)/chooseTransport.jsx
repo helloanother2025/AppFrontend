@@ -1,75 +1,161 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TextInput } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, StyleSheet, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView';
 import { StyledText as Text } from '../../../components/StyledText';
 import { StyledTitle as Title } from '../../../components/StyledTitle';
 import { StyledCardButton as CardButton } from '../../../components/StyledCardButton';
 import RideCard from '../../../components/RideDisplayCard';
-import { StyledButton as Button } from '../../../components/StyledButton';
+import { StyledNavigatorButton as NavButton } from '../../../components/StyledNavigatorButton';
 import { useRouter } from 'expo-router';
 import { useRide } from '../../../context/RideContext';
+import Entypo from '@expo/vector-icons/Entypo';
 
 export default function ChooseTransport() {
   const router = useRouter();
   const { rideData, setRideData } = useRide();
-  const [selectedTransport, setSelectedTransport] = useState(null);
+  const scrollViewRef = useRef(null);
+  const fareInputRef = useRef(null);
+  const [selectedTransport, setSelectedTransport] = useState('Private Car'); // Default to Private Car
+  const [showOptions, setShowOptions] = useState(false);
+  const transportOptions = ['Private', 'Uber', 'Pathao',  'Other'];
   const [fareEstimate, setFareEstimate] = useState('');
 
   const handleNext = () => {
+    console.log('Selected Transport:', selectedTransport);
     let fareValue = fareEstimate.trim();
     if (fareValue === '' || isNaN(fareValue) || parseFloat(fareValue) < 0) {
       fareValue = 'TBA';
     } else {
-      fareValue = parseFloat(fareValue).toFixed(2); // Format to 2 decimal places
+      fareValue = parseFloat(fareValue).toFixed(2); 
     }
 
-    setRideData({ ...rideData, transport: selectedTransport, fare: fareValue });
+    let determinedTransportMode = null;
+    let determinedRideProvider = null;
 
-    if (selectedTransport === 'Car') {
-      router.push('/transportOptions');
-    } else {
-      router.push('/ridePreferences');
+    switch (selectedTransport) {
+      case 'Private Car':
+        determinedTransportMode = 'Car';
+        determinedRideProvider = 'Private';
+        break;
+      case 'Uber':
+        determinedTransportMode = 'Car';
+        determinedRideProvider = 'Uber';
+        break;
+      case 'Pathao':
+        determinedTransportMode = 'Car';
+        determinedRideProvider = 'Pathao';
+        break;
+      case 'Other':
+        determinedTransportMode = 'Car';
+        determinedRideProvider = 'Other';
+        break;
+      case 'CNG':
+        determinedTransportMode = 'CNG';
+        determinedRideProvider = null;
+        break;
+      case 'Bus':
+        determinedTransportMode = 'Bus';
+        determinedRideProvider = null;
+        break;
+      case 'Bike':
+        determinedTransportMode = 'Bike';
+        determinedRideProvider = null;
+        break;
+      default:
+        // Handle default or error case, perhaps leave them as null or set a default
+        break;
     }
+
+        setRideData({
+          ...rideData,
+          transportMode: determinedTransportMode,
+          rideProvider: determinedRideProvider,
+          fare: fareValue
+
+        });
+        console.log('RideData after setting transport and fare:', rideData);
+        router.push('/ridePreferences');
+  };
+
+  const handleFareInputFocus = () => {
+    // Scroll to ensure input is visible when keyboard appears
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   };
 
   return (
-    <ScrollView>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <ScrollView 
+        ref={scrollViewRef}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: 50 }}
+      >
       <Title>Your trip</Title>
 
       <RideCard create={true} ride={rideData} />
 
       <Title>Select transport</Title>
 
-      <CardButton onPress={() => setSelectedTransport('Car')} style={selectedTransport === 'Car' ? styles.selectedCard : {}}>
-        <View style={styles.transportRow}>
-          <Text style={styles.transportIcon}>🚗</Text>
-          <Text style={styles.transportText}>Car</Text>
-        </View>
-      </CardButton>
-      <CardButton onPress={() => setSelectedTransport('CNG')} style={selectedTransport === 'CNG' ? styles.selectedCard : {}}>
-        <View style={styles.transportRow}>
-          <Text style={styles.transportIcon}>🛺</Text>
-          <Text style={styles.transportText}>CNG</Text>
-        </View>
-      </CardButton>
-      <CardButton onPress={() => setSelectedTransport('Bus')} style={selectedTransport === 'Bus' ? styles.selectedCard : {}}>
-        <View style={styles.transportRow}>
-          <Text style={styles.transportIcon}>🚌</Text>
-          <Text style={styles.transportText}>Bus</Text>
+      <CardButton onPress={() => setShowOptions(!showOptions)} style={transportOptions.includes(selectedTransport) ? styles.selectedCard : {}}>
+        <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
+          <View style={styles.transportRow}>
+            <Text style={styles.transportIcon}>🚗</Text>
+            <Text style={[styles.transportText, transportOptions.includes(selectedTransport) ? {fontWeight: 'semibold', color: '#fff'} : {}]}>{selectedTransport && transportOptions.includes(selectedTransport) ? selectedTransport : 'Car'}</Text>
+          </View>
+          <Entypo name={showOptions ? "chevron-up" : "chevron-down"} size={18} color={transportOptions.includes(selectedTransport) ? "#fff" : "black"} />
         </View>
       </CardButton>
 
-      {(selectedTransport === 'Bus' || selectedTransport === 'CNG') && (
+      {showOptions && ( <>
+        <Title style={{fontSize: 20}}>Choose a service:</Title>
+        <View style={styles.gridContainer}>
+          {transportOptions.map((option) => (
+          <CardButton key={option} 
+            onPress={() => setSelectedTransport(option)}
+            style={[styles.gridItem, selectedTransport === option ? styles.selectedCard : {}]}>
+              <Text style={[styles.transportText, selectedTransport === option ? {fontWeight: 'semibold', color: '#fff'} : {}]}>{option}</Text>
+          </CardButton>
+        ))}
+        </View></>
+      )}
+
+      <CardButton onPress={() => {setSelectedTransport('CNG'); setShowOptions(false);}} style={selectedTransport === 'CNG' ? styles.selectedCard : {}}>
+        <View style={styles.transportRow}>
+          <Text style={styles.transportIcon}>🛺</Text>
+          <Text style={[styles.transportText, selectedTransport === 'CNG' ? {fontWeight: 'semibold', color: '#fff'} : {}]}>CNG</Text>
+        </View>
+      </CardButton>
+      <CardButton onPress={() => {setSelectedTransport('Bus'); setShowOptions(false);}} style={selectedTransport === 'Bus' ? styles.selectedCard : {}}>
+        <View style={styles.transportRow}>
+          <Text style={styles.transportIcon}>🚌</Text>
+          <Text style={[styles.transportText, selectedTransport === 'Bus' ? {fontWeight: 'semibold', color: '#fff'} : {}]}>Bus</Text>
+        </View>
+      </CardButton>
+      <CardButton onPress={() => {setSelectedTransport('Bike'); setShowOptions(false);}} style={selectedTransport === 'Bike' ? styles.selectedCard : {}}>
+        <View style={styles.transportRow}>
+          <Text style={styles.transportIcon}>🏍️</Text>
+          <Text style={[styles.transportText, selectedTransport === 'Bike' ? {fontWeight: 'semibold', color: '#fff'} : {}]}>Bike</Text>
+        </View>
+      </CardButton>
+
+      {selectedTransport && (
         <>
         <Title>Fare (optional)</Title>
 
         <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 10,}}>
           <TextInput
+            ref={fareInputRef}
             style={styles.fareInput}
             placeholder='Enter fare...'
             keyboardType='numeric'
             value={fareEstimate}
-            onChangeText={(text) => setFareEstimate(text.replace(/[^0-9.]/g, ''))} 
+            onChangeText={(text) => setFareEstimate(text.replace(/[^0-9.]/g, ''))}
+            onFocus={handleFareInputFocus}
           ></TextInput>
           <Text style={{marginLeft: 10}}>BDT</Text>
         </View>
@@ -77,21 +163,20 @@ export default function ChooseTransport() {
       )}
       
       <View style={styles.buttonRow}>
-        <Button
-          title='Back'
+      <NavButton
           onPress={() => router.back()}
-          style={{ width: '30%' }}
-        ></Button>
-
+          style={{ width: '25%' }}
+        />
         {selectedTransport && (
-        <Button
-          title='Next'
-          onPress={handleNext}
-          style={{ width: '30%' }}
-        ></Button>
+        <NavButton
+          onPress={() => handleNext()}
+          back={false}
+          style={{ width: '25%' }}
+        />
         )}
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   )
 }
 
@@ -106,7 +191,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 15,
+    marginTop: 20,
+    marginBottom: 10,
     width: '100%',
   },
   transportRow: {
@@ -133,9 +219,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   selectedCard: {
-    backgroundColor: '#888',
-    borderWidth: 2,
-    borderColor: '#000',
+    backgroundColor: '#1f1f1f',
+    borderColor: '#1f1f1f',
   },
   fareInput: {
     width: '50%',
@@ -146,7 +231,15 @@ const styles = StyleSheet.create({
     borderColor: '#000',
     fontSize: 16,
     fontFamily: 'Montserrat-Regular'
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  gridItem: {
+    width: '47%',
+    marginBottom: 10,
   }
 })
-
 

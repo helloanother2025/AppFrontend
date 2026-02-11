@@ -19,7 +19,7 @@ import { useRouter } from 'expo-router';
 
 const AvailableRides = () => {
   const router = useRouter();
-  const { searchData, clearSearch } = useSearch();
+  const { searchData, resetSearchData } = useSearch();
   const { rides, fetchAvailableRides, loading } = useRide(); // Use useRide hook
   const scrollRef = useRef(null);
 
@@ -28,10 +28,22 @@ const AvailableRides = () => {
   const [date, setDate] = useState(null);
   const [selectedTransport, setSelectedTransport] = useState(null);
   const [selectedGender, setSelectedGender] = useState(null);
-  const [leaveNow, setLeaveNow] = useState(true);
+  const [selectedTimeFilter, setSelectedTimeFilter] = useState('All'); // 'All', 'Leave now', 'Schedule'
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const RADIUS_KM = 3; // Default search radius for backend
+
+  const handleTimeFilterChange = (filter) => {
+    setSelectedTimeFilter(filter);
+    if (filter === 'All') {
+      setDate(null);
+    } else if (filter === 'Leave now') {
+      setDate(null);
+    } else if (filter === 'Schedule') {
+      // Potentially show date picker immediately if not already set
+      if (!date) setShowDatePicker(true);
+    }
+  };
 
   const handleSearch = useCallback(async () => {
     const filters = {};
@@ -42,14 +54,16 @@ const AvailableRides = () => {
       filters.genderPreference = selectedGender;
     }
 
-    const now = new Date();
-    if (leaveNow) {
+    if (selectedTimeFilter === 'All') {
+      // No specific date/time filters for "All" rides, they will be fetched by recency
+    } else if (selectedTimeFilter === 'Leave now') {
+      const now = new Date();
       // "Leave now": 45 minutes before to 45 minutes after current time
       const fortyFiveMinutesAgo = new Date(now.getTime() - 45 * 60 * 1000);
       const fortyFiveMinutesFromNow = new Date(now.getTime() + 45 * 60 * 1000);
       filters.afterDate = fortyFiveMinutesAgo.toISOString();
       filters.beforeDate = fortyFiveMinutesFromNow.toISOString();
-    } else if (date) {
+    } else if (selectedTimeFilter === 'Schedule' && date) {
       // "Schedule": 2 hours before to 2 hours after the selected date
       const twoHoursBefore = new Date(date.getTime() - 2 * 60 * 60 * 1000);
       const twoHoursAfter = new Date(date.getTime() + 2 * 60 * 60 * 1000);
@@ -57,47 +71,51 @@ const AvailableRides = () => {
       filters.beforeDate = twoHoursAfter.toISOString();
     }
     
-    // Add location filters from searchData if available
-    if (searchData.start?.coords) {
-      filters.startLocationLat = searchData.start.coords.latitude ?? searchData.start.coords.lat;
-      filters.startLocationLng = searchData.start.coords.longitude ?? searchData.start.coords.lng;
-      filters.radiusKm = RADIUS_KM; // Apply radius for fuzzy search
-    }
-    if (searchData.destination?.coords) {
-      filters.endLocationLat = searchData.destination.coords.latitude ?? searchData.destination.coords.lat;
-      filters.endLocationLng = searchData.destination.coords.longitude ?? searchData.destination.coords.lng;
-      filters.radiusKm = RADIUS_KM; // Apply radius for fuzzy search
+    const hasStartLocation = !!searchData.start?.geometry?.location;
+    const hasEndLocation = !!searchData.destination?.geometry?.location;
+
+    let searchType = 'none';
+    if (hasStartLocation && hasEndLocation) {
+      searchType = 'both';
+    } else if (hasStartLocation) {
+      searchType = 'start';
+    } else if (hasEndLocation) {
+      searchType = 'destination';
     }
 
+    // Add location filters from searchData if available
+    if (hasStartLocation) {
+      filters.startLocationLat = searchData.start.geometry.location.lat;
+      filters.startLocationLng = searchData.start.geometry.location.lng;
+      filters.radiusKm = RADIUS_KM; // Apply radius for fuzzy search
+    }
+    if (hasEndLocation) {
+      filters.endLocationLat = searchData.destination.geometry.location.lat;
+      filters.endLocationLng = searchData.destination.geometry.location.lng;
+      filters.radiusKm = RADIUS_KM; // Apply radius for fuzzy search
+    }
+    filters.timeFilter = selectedTimeFilter; // Pass the active time filter
+    filters.searchType = searchType; // Pass the determined search type
     await fetchAvailableRides(filters);
-  }, [selectedTransport, selectedGender, date, leaveNow, searchData, fetchAvailableRides]);
+  }, [selectedTransport, selectedGender, date, selectedTimeFilter, searchData, fetchAvailableRides]);
 
   useEffect(() => {
     handleSearch();
     if (scrollRef.current) {
         setTimeout(() => scrollRef.current.scrollToEnd({ animated: true }), 150);
     }
-  }, [selectedTransport, selectedGender, date, leaveNow, searchData, handleSearch]); // Depend on handleSearch, which now encapsulates all filter states
+  }, [selectedTransport, selectedGender, date, selectedTimeFilter, searchData, handleSearch]); // Depend on handleSearch, which now encapsulates all filter states
 
   const onDateChange = (selectedDate) => {
     setDate(selectedDate || date);
     setShowDatePicker(false);
   };
 
-  const toggleLeaveNow = () => {
-    const newLeaveNow = !leaveNow;
-    setLeaveNow(newLeaveNow);
-    if (!newLeaveNow) {
-      setShowDatePicker(true);
-    } else {
-      setDate(null);
-    }
-  }
-
   const handleDatePickerCancel = () => {
     setShowDatePicker(false);
     if (!date) {
-      setLeaveNow(true);
+      // If date was not set and user cancels, revert to "Leave now"
+      setSelectedTimeFilter('Leave now');
     }
   }
 
@@ -105,15 +123,15 @@ const AvailableRides = () => {
     setSelectedTransport(null);
     setSelectedGender(null);
     setDate(null);
-    setLeaveNow(true);
-    clearSearch(); // Clear location search data
-  }, [clearSearch]);
+    setSelectedTimeFilter('All'); // Reset to 'All'
+    resetSearchData(); // Clear location search data
+  }, [resetSearchData]);
 
   return (
     <ScrollView innerRef={scrollRef}>
       <Title>Search for a ride</Title>
 
-      <Search title="Where to today?" onPress={() => router.push('/searchRoute')} />
+      {showSearch && <Search title="Where to today?" onPress={() => {router.push('/searchRoute'); setShowSearch(false)}} />}
 
       {!showSearch && (
         <View style={styles.dropdownContainer}>
@@ -125,40 +143,35 @@ const AvailableRides = () => {
             title={searchData.destination?.name || 'Destination'}
             onPress={() => router.push('/searchRoute')}
           />
-          <StyledDateTimePicker
-            style={{ width: '100%' }}
-            text="Date & time"
-            value={date}
-            mode="datetime"
-            onChange={onDateChange}
-          />
         </View>
       )}
-
 
       <View style={styles.controlsContainer}>
         <View style={styles.scheduleContainer}>
           <TouchableOpacity
-            style={[styles.scheduleOption, leaveNow && styles.scheduleOptionActive]}
-            onPress={() => {
-              if (!leaveNow) toggleLeaveNow();
-            }}>
-            <Text style={[styles.scheduleOptionText, leaveNow && styles.scheduleOptionTextActive]}>
+            style={[styles.scheduleOption, selectedTimeFilter === 'All' && styles.scheduleOptionActive]}
+            onPress={() => handleTimeFilterChange('All')}>
+            <Text style={[styles.scheduleOptionText, selectedTimeFilter === 'All' && styles.scheduleOptionTextActive]}>
+              All
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.scheduleOption, selectedTimeFilter === 'Leave now' && styles.scheduleOptionActive]}
+            onPress={() => handleTimeFilterChange('Leave now')}>
+            <Text style={[styles.scheduleOptionText, selectedTimeFilter === 'Leave now' && styles.scheduleOptionTextActive]}>
               Leave now
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.scheduleOption, !leaveNow && styles.scheduleOptionActive]}
-            onPress={() => {
-              if (leaveNow) toggleLeaveNow();
-            }}>
-            <Text style={[styles.scheduleOptionText, !leaveNow && styles.scheduleOptionTextActive]}>
+            style={[styles.scheduleOption, selectedTimeFilter === 'Schedule' && styles.scheduleOptionActive]}
+            onPress={() => handleTimeFilterChange('Schedule')}>
+            <Text style={[styles.scheduleOptionText, selectedTimeFilter === 'Schedule' && styles.scheduleOptionTextActive]}>
               Schedule
             </Text>
           </TouchableOpacity>
         </View>
 
-        {!leaveNow && date && (
+        {selectedTimeFilter === 'Schedule' && date && (
           <TouchableOpacity 
             style={styles.dateButton}
             onPress={() => setShowDatePicker(true)}>
@@ -169,6 +182,7 @@ const AvailableRides = () => {
             <FontAwesome name="chevron-right" size={12} color="#e63e4c" />
           </TouchableOpacity>
         )}
+
 
         <TouchableOpacity
           style={[styles.filterToggle, showFilters && styles.filterToggleActive]}

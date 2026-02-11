@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView';
 import { useRouter } from 'expo-router';
 import { StyledText as Text } from '../../../components/StyledText';
@@ -7,19 +7,21 @@ import { StyledTitle as Title } from '../../../components/StyledTitle';
 import RideCard from '../../../components/RideDisplayCard';
 import { StyledCard as Card} from '../../../components/StyledCard';
 import { StyledSearchBar as TextInput } from '../../../components/StyledSearchBar';
-import { StyledButton as Button } from '../../../components/StyledButton';
+import { StyledNavigatorButton as Button } from '../../../components/StyledNavigatorButton';
 import { useRide } from '../../../context/RideContext';
 
 
 export default function RidePreferences() {
   const router = useRouter();
   const { rideData, setRideData } = useRide();
+  const scrollViewRef = useRef(null);
+  const preferenceInputRef = useRef(null);
   const [preferences, setPreferences] = useState({
     numPartners: 1,
     gender: 'Any',
     otherNotes: ''
   });
-  const maxPartners = rideData.transport === 'Car' ? 4 : rideData.transport === 'CNG' ? 3 : 10;
+  const maxPartners = rideData.transportMode === 'Car' ? 4 : rideData.transportMode === 'CNG' ? 3 : rideData.transportMode === 'Bike' ? 1 : 10;
 
   const handleNext = () => {
     setRideData({
@@ -31,62 +33,76 @@ export default function RidePreferences() {
     router.replace('/rideCreated');
   };
   
+  const handlePreferenceInputFocus = () => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
 
   return (
-    <ScrollView>
-      <Title>Your trip</Title>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <ScrollView>
+        <Title>Your trip</Title>
 
-      <RideCard create={true} ride={rideData} />
+        <RideCard create={true} ride={rideData} />
 
-      <Title>Ride preferences</Title>
+        <Title>Ride preferences</Title>
 
-      <Card>
-        <Text style={styles.formText}>Number of ride partners</Text>
-        <View style={styles.numericInputContainer}>
-          <TouchableOpacity onPress={() => setPreferences(p => ({ ...p, numPartners: Math.max(1, p.numPartners - 1) }))} style={styles.numericButton}>
-            <Text style={styles.numericButtonText}>-</Text>
-          </TouchableOpacity>
-          <Text style={styles.numericValue}>{preferences.numPartners}</Text>
-          <TouchableOpacity onPress={() => setPreferences(p => ({ ...p, numPartners: Math.min(maxPartners, p.numPartners + 1 )}))} style={styles.numericButton}>
-            <Text style={styles.numericButtonText}>+</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.formText}>Preferred gender</Text>
-        <View style={{ flexDirection: 'row', marginVertical: 5 }}>
-          {['Any', 'Male', 'Female'].map(opt => (
-            <TouchableOpacity
-              key={opt}
-              onPress={() => setPreferences(p => ({ ...p, gender: opt }))}
-              style={[styles.pill, preferences.gender === opt && styles.pillActive]}>
-              <Text style={[styles.pillText, preferences.gender === opt && styles.pillTextActive]}>{opt}</Text>
+        <Card>
+          <Text style={styles.formText}>Number of ride partners</Text>
+          <View style={styles.numericInputContainer}>
+            <TouchableOpacity onPress={() => setPreferences(p => ({ ...p, numPartners: Math.max(1, p.numPartners - 1) }))} style={styles.numericButton}>
+              <Text style={styles.numericButtonText}>-</Text>
             </TouchableOpacity>
-          ))}
+            <Text style={styles.numericValue}>{preferences.numPartners}</Text>
+            <TouchableOpacity onPress={() => setPreferences(p => ({ ...p, numPartners: Math.min(maxPartners, p.numPartners + 1 )}))} style={styles.numericButton}>
+              <Text style={styles.numericButtonText}>+</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.formText}>Preferred gender</Text>
+          <View style={{ flexDirection: 'row', marginVertical: 5 }}>
+            {['Any', 'Male', 'Female'].map(opt => (
+              <TouchableOpacity
+                key={opt}
+                onPress={() => setPreferences(p => ({ ...p, gender: opt }))}
+                style={[styles.pill, preferences.gender === opt && styles.pillActive]}>
+                <Text style={[styles.pillText, preferences.gender === opt && styles.pillTextActive]}>{opt}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={styles.formText}>Other</Text>
+          <TextInput
+            placeholder='Add notes (optional)'
+            ref={preferenceInputRef}
+            value={preferences.otherNotes}
+            onChangeText={text => setPreferences(p => ({ ...p, otherNotes: text }))}
+            onFocus={handlePreferenceInputFocus}
+            multiline
+          />
+        </Card>
+
+
+        <View style={styles.buttonRow}>
+          <Button
+            title='Back'
+            onPress={() => router.back()}
+            style={{ width: '30%' }}
+          ></Button>
+          <Button
+            title='Finish'
+            back={false}
+            onPress={handleNext}
+            style={{ width: '35%' }}
+          ></Button>
         </View>
-
-        <Text style={styles.formText}>Other</Text>
-        <TextInput
-          placeholder='Add notes (optional)'
-          value={preferences.otherNotes}
-          onChangeText={text => setPreferences(p => ({ ...p, otherNotes: text }))}
-          multiline
-        />
-      </Card>
-
-
-      <View style={styles.buttonRow}>
-        <Button
-          title='Back'
-          onPress={() => router.back()}
-          style={{ width: '30%' }}
-        ></Button>
-        <Button
-          title='Finish'
-          onPress={handleNext}
-          style={{ width: '35%' }}
-        ></Button>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   )
 }
 

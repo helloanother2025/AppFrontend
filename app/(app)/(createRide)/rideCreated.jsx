@@ -28,50 +28,37 @@ export default function RideCreated() {
         return;
       }
 
-      if (!rideData.transport || !rideData.totalPassengers) {
+      if (!rideData.transportMode || !rideData.totalPassengers) {
         setCreationError('Missing ride details. Please go back and complete all steps.');
         return;
       }
 
-      try {
-        hasSubmittedRef.current = true;
-        // Use the fullDate from rideData, which contains the selected or "leave now" date/time
-        // Ensure it's an ISO string, which we've already handled in chooseDate.jsx
-        const startTime = rideData.fullDate;
-        
-        // Map transport modes to database enum values
-        const transportMap = {
-          'Uber': 'Car',
-          'Pathao': 'Bike',
-          'Car': 'Car',
-          'CNG': 'CNG',
-          'Bus': 'Bus',
-          'Bike': 'Bike'
-        };
-        
-        const payload = {
-          startLocation: {
-            name: rideData.start.name,
-            address: rideData.start.name,
-            latitude: rideData.start.coords.lat,
-            longitude: rideData.start.coords.lng,
-          },
-          endLocation: {
-            name: rideData.destination.name,
-            address: rideData.destination.name,
-            latitude: rideData.destination.coords.lat,
-            longitude: rideData.destination.coords.lng,
-          },
-          startTime,
-          transportMode: transportMap[rideData.transport] || rideData.transport,
-          availableSeats: rideData.totalPassengers,
-          fare: rideData.fare === 'TBA' ? 0 : parseFloat(rideData.fare || 0),
-          rideProvider: 'Private',
-          genderPreference: rideData.gender && rideData.gender !== 'Any' ? rideData.gender.toLowerCase() : null,
-          notes: rideData.preferences,
-          routePolyline: rideData.routePolyline,
-        };
+      const startTime = rideData.fullDate;
 
+      const payload = {
+        startLocation: {
+          name: rideData.start.name,
+          address: rideData.start.name,
+          latitude: rideData.start.coords.lat,
+          longitude: rideData.start.coords.lng,
+        },
+        endLocation: {
+          name: rideData.destination.name,
+          address: rideData.destination.name,
+          latitude: rideData.destination.coords.lat,
+          longitude: rideData.destination.coords.lng,
+        },
+        startTime,
+        transportMode: rideData.transportMode,
+        availableSeats: rideData.totalPassengers,
+        fare: rideData.fare === 'TBA' ? 0 : parseFloat(rideData.fare || 0),
+        rideProvider: rideData.rideProvider,
+        genderPreference: rideData.gender && rideData.gender !== 'Any' ? rideData.gender.toLowerCase() : null,
+        notes: rideData.preferences,
+        routePolyline: rideData.routePolyline,
+      };
+
+      try {
         const created = await createRide(payload);
         if (isMounted) {
           setCreatedRide(created);

@@ -46,7 +46,7 @@ const Dash = () => {
 
       {/* Create Ride -> route directly to chooseStart if recent rides empty */}
       <TouchableOpacity style={styles.button} onPress={() => router.push('/create')}>
-        <Text style={styles.buttonTitle}>Create a Ride</Text>
+        <Text style={styles.buttonTitle}>Create a ride</Text>
         <Text style={styles.buttonText}>
           Choose your destination and look for others to share the journey.
         </Text>
@@ -54,7 +54,7 @@ const Dash = () => {
 
       {/* Join Ride */}
       <TouchableOpacity style={styles.button} onPress={() => router.push('/availableRides')}>
-        <Text style={styles.buttonTitle}>Join a Ride</Text>
+        <Text style={styles.buttonTitle}>Join a ride</Text>
         <Text style={styles.buttonText}>
           Find others going your way who are also looking to share.
         </Text>
