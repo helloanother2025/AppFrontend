@@ -85,6 +85,7 @@ export default function FareCalculation() {
       });
       Alert.alert('Success', 'Fare payment complete');
       router.push('/(dashboard)/(rides)/rides');
+      //router.push('/(app)/(completeRide)/partnerFeedback'); // Navigate to Partner Feedback form
     } catch (error) {
       Alert.alert('Error', error.message || 'Failed to complete ride');
     } finally {
