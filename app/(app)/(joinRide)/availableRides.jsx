@@ -138,6 +138,7 @@ const AvailableRides = () => {
           <Search
             title={searchData.start?.name || 'Starting point'}
             onPress={() => router.push('/searchRoute')}
+            style={{marginBottom: 0}}
           />
           <Search
             title={searchData.destination?.name || 'Destination'}
