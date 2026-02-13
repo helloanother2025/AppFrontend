@@ -48,11 +48,11 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
         const contentType = res.headers.get('content-type');
         if (res.ok && contentType && contentType.includes('application/json')) {
           const data = await res.json();
-          // Fallback: use ride.partners if backend returns empty array
+          // Filter out removed passengers
           if (Array.isArray(data.passengers) && data.passengers.length > 0) {
-            setPassengers(data.passengers);
+            setPassengers(data.passengers.filter(p => p.status !== 'removed'));
           } else if (Array.isArray(ride.partners) && ride.partners.length > 0) {
-            setPassengers(ride.partners);
+            setPassengers(ride.partners.filter(p => p.status !== 'removed'));
           } else {
             setPassengers([]);
           }
@@ -60,7 +60,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
           const text = await res.text();
           console.error('Failed to fetch ride details, non-JSON response:', text);
           if (Array.isArray(ride.partners) && ride.partners.length > 0) {
-            setPassengers(ride.partners);
+            setPassengers(ride.partners.filter(p => p.status !== 'removed'));
           } else {
             setPassengers([]);
           }
@@ -69,7 +69,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
         console.error('Failed to fetch ride details:', err);
         // Fallback: use ride.partners if fetch fails
         if (Array.isArray(ride.partners) && ride.partners.length > 0) {
-          setPassengers(ride.partners);
+          setPassengers(ride.partners.filter(p => p.status !== 'removed'));
         } else {
           setPassengers([]);
         }
@@ -330,6 +330,23 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
                       <Text style={styles.handle}>@{partner.username || partner.handle}</Text>
                     </View>
                   </TouchableOpacity>
+                  {/* Show minus sign only for own rides */}
+                  {isOwnRide && (
+                    <TouchableOpacity
+                      style={{ marginLeft: 8 }}
+                      onPress={() => {
+                        router.push({
+                          pathname: '/RemovePassengerScreen',
+                          params: {
+                            passenger: partner,
+                            rideId: ride.id || ride.ride_id
+                          }
+                        });
+                      }}
+                    >
+                      <Entypo name="minus" size={24} color="#e63e4c" />
+                    </TouchableOpacity>
+                  )}
                 </View>
               );
             })
