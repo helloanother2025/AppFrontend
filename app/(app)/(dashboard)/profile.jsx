@@ -126,7 +126,7 @@ const UserProfile = () => {
             {avgRating !== null && totalRatings > 0 ? (
                 <Text style={styles.statValue}>{avgRating}</Text>
             ) : (
-              <Text style={styles.statValue}>No ratings yet</Text>
+              <Text style={styles.statValue}>Unrated</Text>
             )}
             <Text style={{fontSize: 11}}>Overall Rating</Text>
           </View>
