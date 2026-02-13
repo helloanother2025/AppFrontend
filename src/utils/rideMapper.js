@@ -89,6 +89,7 @@ export const normalizeRide = (ride) => {
           return ride.passengers.map((p) => ({
             name: p.name,
             handle: ensureHandle(p.username ?? p.handle, p.username),
+            user_id: p.user_id ?? p.id ?? p.userId ?? p.passenger_id ?? p.passengerId ?? null,
             start: {
               name: p.start_name || p.start_address || 'Pickup',
               coords: (p.start_lat !== undefined && p.start_lng !== undefined)
@@ -108,6 +109,7 @@ export const normalizeRide = (ride) => {
           return ride.partners.map((p) => ({
             name: p.name,
             handle: ensureHandle(p.handle, p.handle),
+            user_id: p.user_id ?? p.id ?? p.userId ?? p.passenger_id ?? p.passengerId ?? null,
             start: { name: 'Pickup', coords: null },
             destination: { name: 'Drop-off', coords: null },
           }));
@@ -153,6 +155,7 @@ export const normalizeRide = (ride) => {
       ? ride.passengers.map((p) => ({
           name: p.name,
           handle: ensureHandle(p.username ?? p.handle, p.username),
+          user_id: p.user_id ?? p.id ?? p.userId ?? p.passenger_id ?? p.passengerId ?? null,
           start: {
             name: p.start_name || p.start_address || 'Pickup',
             coords: (p.start_lat !== undefined && p.start_lng !== undefined)

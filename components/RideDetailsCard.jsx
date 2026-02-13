@@ -168,30 +168,38 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
       setRequesting(false);
     }
   };
-  // Unify logic: always set selectedRide and navigate, only update status for 'Complete ride'
-  const handleComplete = async (shouldComplete = false) => {
-    try {
-      let updated = ride;
-      if (shouldComplete && !isRideCompleted) {
-        updated = await updateRideStatus(ride?.id, 'completed');
-      }
-      // Always normalize before selecting, so creator and fields are present
-      selectRide(normalizeRide(updated || ride));
-      router.push('/fareCalculation');
-      setIsCompleted(true);
-    } catch (error) {
-      const message = error?.message || 'Failed to complete ride';
-      if (message.toLowerCase().includes('not authorized')) {
-        Alert.alert('You are not authorized');
-      } else {
-        Alert.alert('Error', message);
-      }
-    }
-  };
+  
 
   return (
     <Card>
-      {join && (
+      {/* Start Ride and Complete Ride buttons for own created rides */}
+      {isOwnRide && rideStatus === 'unactive' && (
+        <Button
+          title="Start Ride"
+          style={{ marginBottom: 16, backgroundColor: '#000' }}
+          textStyle={{ color: '#fff', fontWeight: 'bold' }}
+          onPress={async () => {
+            try {
+              const updated = await updateRideStatus(ride.id, 'started');
+              selectRide(updated || ride);
+              Alert.alert('Success', 'Ride has started!');
+            } catch (e) {
+              Alert.alert('Error', 'Failed to start ride');
+            }
+          }}
+        />
+      )}
+      {isOwnRide && rideStatus === 'started' && (
+        <Button
+          title="Complete Ride"
+          style={{ marginBottom: 16, backgroundColor: '#000' }}
+          textStyle={{ color: '#fff', fontWeight: 'bold' }}
+          onPress={() => {
+            router.push('/fareCalculation');
+          }}
+        />
+      )}
+      {join && !isOwnRide && (
         <>
           <Button
             title={
@@ -214,23 +222,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
         </>
       )}
       
-      {/* Only show one button: Complete ride (if not completed), Calculate fare (if completed and fare is pending), nothing if both done */}
-      {ongoing && (
-        (!isRideCompleted && (
-          <Button
-            title="Complete ride"
-            style={{ marginBottom: 10 }}
-            onPress={() => handleComplete(true)}
-          />
-        )) ||
-        (isRideCompleted && isFarePending && (
-          <Button
-            title="Calculate fare"
-            style={{ marginBottom: 20 }}
-            onPress={() => handleComplete(false)}
-          />
-        ))
-      )}
+      {/* Action buttons for completing or calculating fare are intentionally removed for clean slate */}
 
       {/* Start location */}
       <View style={styles.rideRow}>

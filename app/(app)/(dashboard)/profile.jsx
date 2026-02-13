@@ -7,7 +7,8 @@ import { StyledButton as Button } from '../../../components/StyledButton'
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5'
 import { useRide } from '../../../context/RideContext'
 import { useUser } from '../../../context/UserContext'
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
+import axios from 'axios';
 import FriendsBox from '../../../components/FriendsBox';
 import { useFriends } from '../../../context/FriendsContext';
 import { useTheme } from '../../../context/ThemeContext';
@@ -19,6 +20,8 @@ const UserProfile = () => {
   const { myRides, joinedRides, fetchMyRides, fetchJoinedRides } = useRide();
   const router = useRouter();
   const user = currentUser;
+  const [avgRating, setAvgRating] = useState(null);
+  const [totalRatings, setTotalRatings] = useState(null);
   const { theme, toggleTheme } = useTheme();
 
   const createdRides = myRides || [];
@@ -28,7 +31,25 @@ const UserProfile = () => {
     fetchCurrentUser();
     fetchMyRides();
     fetchJoinedRides();
-  }, [fetchCurrentUser, fetchMyRides, fetchJoinedRides]);
+    // Fetch average feedback rating from feedback table
+    const fetchAvg = async () => {
+      try {
+        const userId = user?.id || user?.user_id;
+        console.log('Fetching feedback average for userId:', userId);
+        if (!userId) return;
+        // Use feedback endpoint without /api prefix
+        const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+        const FEEDBACK_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, '');
+        const res = await axios.get(`${FEEDBACK_BASE_URL}/feedback/user/${userId}/average`);
+        setAvgRating(res.data.avgRating);
+        setTotalRatings(res.data.totalRatings);
+      } catch (e) {
+        setAvgRating(null);
+        setTotalRatings(null);
+      }
+    };
+    if (user && (user.id || user.user_id)) fetchAvg();
+  }, [fetchCurrentUser, fetchMyRides, fetchJoinedRides, user]);
 
   const handleLogout = async () => {
     Alert.alert(
@@ -102,7 +123,11 @@ const UserProfile = () => {
           </View>
           
           <View style={{alignItems: 'center'}}>
-            <Text style={styles.statValue}>{user.rating ?? user.avg_rating ?? '-'}</Text>
+            {avgRating !== null && totalRatings > 0 ? (
+                <Text style={styles.statValue}>{avgRating}</Text>
+            ) : (
+              <Text style={styles.statValue}>No ratings yet</Text>
+            )}
             <Text style={{fontSize: 11}}>Overall Rating</Text>
           </View>
         </View>

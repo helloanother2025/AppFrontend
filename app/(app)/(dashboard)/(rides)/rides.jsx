@@ -1,3 +1,4 @@
+// ...existing code removed...
 import React, { useEffect, useCallback } from 'react';
 import { Alert, TouchableOpacity, View } from 'react-native';
 import { StyledScrollView as ScrollView } from '../../../../components/StyledScrollView';
@@ -20,22 +21,18 @@ const UserRides = () => {
   const allMyRides = [...myRides, ...joinedRides];
   // console.log removed
   
-  // Filter for ongoing (completed rides with pending fare stay ongoing)
+  // Filter for ongoing rides (no completion/fare logic for clean slate)
   const activeRides = allMyRides.filter((ride) => {
     const status = String(ride.status ?? ride.currentStatus ?? ride.current_status ?? '').toLowerCase();
-    const fareStatus = String(ride.fareStatus ?? '').toLowerCase();
-    if (['cancelled', 'expired'].includes(status)) return false;
-    if (status === 'completed' && fareStatus === 'complete') return false;
+    if (['cancelled', 'expired', 'completed'].includes(status)) return false;
     return true;
   });
   // console.log removed
   
-  // Filter for previous rides (completed with fare complete, cancelled, or expired)
+  // Filter for previous rides (completed, cancelled, or expired)
   const previousRides = allMyRides.filter((ride) => {
     const status = String(ride.status ?? ride.currentStatus ?? ride.current_status ?? '').toLowerCase();
-    const fareStatus = String(ride.fareStatus ?? '').toLowerCase();
-    if (['cancelled', 'expired'].includes(status)) return true;
-    if (status === 'completed' && fareStatus === 'complete') return true;
+    if (['cancelled', 'expired', 'completed'].includes(status)) return true;
     return false;
   });
   console.log('📊 Previous rides:', previousRides.length);
