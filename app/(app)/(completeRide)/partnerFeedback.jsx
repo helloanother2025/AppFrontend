@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView';
 import { useRouter } from 'expo-router';
@@ -6,35 +6,67 @@ import { StyledTitle as Title } from '../../../components/StyledTitle';
 import { StyledText as Text } from '../../../components/StyledText';
 import { StyledCard as Card } from '../../../components/StyledCard';
 import { useRide } from '../../../context/RideContext';
+import { useUser } from '../../../context/UserContext';
 import axios from 'axios';
 import { TextInput } from 'react-native';
 
 const PartnerFeedback = () => {
   const router = useRouter();
-  const { selectedRide, myRides, rides: availableRides } = useRide();
-  const currentRide = selectedRide || myRides[0] || availableRides[0];
 
-  const participants = JSON.parse(router.query.participants || '[]');
+  const { selectedRide, myRides, rides: availableRides, getRideDetails } = useRide();
+  const { currentUser } = useUser();
+  // Prefer rideId from route params if present
+  const rideIdFromParams = router?.params?.rideId;
+  const currentRide = rideIdFromParams
+    ? (availableRides.find(r => r.id === Number(rideIdFromParams) || r.ride_id === Number(rideIdFromParams)) || { id: Number(rideIdFromParams) })
+    : (selectedRide || myRides[0] || availableRides[0]);
 
-  const [partners, setPartners] = useState(
-    participants.map((p) => ({
-      ...p,
-      rating: p.rating || 0,
-      review: p.review || '',
-    }))
-  );
+  let participants = [];
+  try {
+    participants = router?.query?.participants ? JSON.parse(router.query.participants) : [];
+  } catch {
+    participants = [];
+  }
+
+  const [partners, setPartners] = useState([]);
+
+  // Always fetch latest ride details if rideId is present or no participants param
+  useEffect(() => {
+    const fetchPartners = async () => {
+      if (rideIdFromParams || (!participants || participants.length === 0)) {
+        const rideId = rideIdFromParams || currentRide?.id;
+        if (rideId) {
+          const freshRide = await getRideDetails(rideId);
+          console.log('Fetched ride details:', freshRide);
+          if (freshRide && Array.isArray(freshRide.partners) && freshRide.partners.length > 0) {
+            console.log('Fetched partners:', freshRide.partners);
+            setPartners(freshRide.partners.map((p) => ({ ...p, rating: p.rating || 0, review: p.review || '' })));
+            return;
+          } else {
+            console.log('No partners found in ride details.');
+          }
+        }
+      }
+      // fallback to participants param if available
+      if (participants.length > 0) {
+        setPartners(participants.map((p) => ({ ...p, rating: p.rating || 0, review: p.review || '' })));
+      }
+    };
+    fetchPartners();
+  }, [rideIdFromParams, currentRide?.id]);
 
   if (!currentRide || !currentRide.partners || currentRide.partners.length === 0) {
     return (
-      <ScrollView>
+      <ScrollView style={styles.container}>
         <Title>No Buddies Found</Title>
         <Text>No buddies available for feedback.</Text>
       </ScrollView>
     );
   }
 
+
   const Star = ({ filled, onClick }) => (
-    <TouchableOpacity onPress={onClick} activeOpacity={1}>
+    <TouchableOpacity onPressIn={onClick} activeOpacity={1}>
       <Text style={{ fontSize: 44, marginHorizontal: 2, color: filled ? "gold" : "#ccc" }}>★</Text>
     </TouchableOpacity>
   );
@@ -64,39 +96,65 @@ const PartnerFeedback = () => {
     );
   };
 
+
   const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+  const FEEDBACK_URL = process.env.EXPO_PUBLIC_FEEDBACK_URL;
 
+  // Completely rewritten feedback submission logic
   const handleSubmitFeedback = async () => {
-    try {
-      const feedbackData = partners.map((partner) => ({
-        ride_id: currentRide.id, // Replace with actual ride ID
-        reviewer_id: currentRide.reviewer_id, // Replace with actual reviewer ID
-        reviewee_id: partner.id, // Replace with actual reviewee ID
+    if (!currentRide || !currentUser) {
+      alert('Missing ride or user information.');
+      return;
+    }
+    let hadError = false;
+    let errorMsg = '';
+    for (const partner of partners) {
+      const payload = {
+        ride_id: currentRide.id,
+        reviewer_id: currentUser.id || currentUser.user_id,
+        reviewee_id: partner.user_id || partner.id,
         rating: partner.rating,
-      }));
-
-      await Promise.all(
-        feedbackData.map(async (feedback) => {
-          await axios.post(`${API_BASE_URL}/feedback/submit`, feedback);
-
-          // Send notification to the user with a view button
-          await axios.post(`${API_BASE_URL}/notifications/send`, {
-            userId: feedback.reviewee_id,
-            message: `You have been rated in your previous ride by ${currentRide.reviewer_name}. View feedback.`,
-            action: {
-              type: 'view_feedback',
-              rideId: feedback.ride_id,
-              reviewerId: currentRide.reviewer_id,
-            },
-          });
-        })
-      );
-
-      alert('Feedback submitted successfully!');
+        review: partner.review || '',
+      };
+      try {
+        const response = await axios.post(FEEDBACK_URL, payload);
+        if (response.status !== 201) {
+          hadError = true;
+          errorMsg = 'Unexpected response from backend: ' + response.status;
+          break;
+        }
+        // Send notification to the rated user
+        const notifPayload = {
+          userId: payload.reviewee_id,
+          type: 'feedback',
+          message: `You have been rated in your previous ride by ${currentUser.name || currentUser.username || 'a user'}.`,
+          relatedUserId: payload.reviewer_id,
+          relatedRideId: payload.ride_id,
+        };
+        try {
+          // Remove any accidental /send from the URL
+          let notifUrl = `${API_BASE_URL.replace(/\/?$/, '')}/notifications`;
+          notifUrl = notifUrl.replace(/\/send$/, '');
+          await axios.post(notifUrl, notifPayload);
+        } catch (notifErr) {
+          console.error('Notification error:', notifErr);
+          // Do not block feedback success on notification failure
+        }
+      } catch (err) {
+        hadError = true;
+        if (err.response) {
+          errorMsg = 'Backend error: ' + (err.response.data?.error || JSON.stringify(err.response.data));
+        } else {
+          errorMsg = 'Network or unknown error: ' + err.message;
+        }
+        break;
+      }
+    }
+    if (hadError) {
+      alert(errorMsg);
+    } else {
+      alert('Feedback submitted and saved!');
       router.push('/(dashboard)/dash');
-    } catch (error) {
-      console.error('Error submitting feedback:', error);
-      alert('Failed to submit feedback. Please try again.');
     }
   };
 
@@ -130,10 +188,8 @@ const PartnerFeedback = () => {
             multiline
             numberOfLines={4}
             value={partner.review || ''}
-            onChangeText={(text) =>
-              optimizedSetPartners(partner.handle, 'review', text)
-            }
-            allowEmptyInput={true} // Allowing the review area to be optional
+            onChangeText={(text) => optimizedSetPartners(partner.handle, 'review', text)}
+            allowEmptyInput={true}
           />
         </Card>
       ))}

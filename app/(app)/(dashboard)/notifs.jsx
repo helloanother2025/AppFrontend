@@ -16,7 +16,7 @@ const Notifications = () => {
   const [notificationData, setNotificationData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState({});
-  const { fetchMyRides, fetchJoinedRides } = useRide();
+  const { fetchMyRides, fetchJoinedRides, updateRidePassengers } = useRide();
   const { isAuthenticated } = useUser();
   const router = useRouter();
 
@@ -71,7 +71,12 @@ const Notifications = () => {
         Alert.alert('Success', 'Friend request accepted!');
       } else if (notification.type === 'join_request' && requestId) {
         await joinRequestsAPI.acceptJoinRequest(requestId);
+        // Fetch the ride details to get updated passengers
+        if (notification.related_ride_id && updateRidePassengers) {
+          await updateRidePassengers(notification.related_ride_id);
+        }
         await fetchMyRides();
+        await fetchJoinedRides && fetchJoinedRides();
         Alert.alert('Success', 'Join request accepted!');
       }
       await notificationsAPI.markAsRead(notification.notification_id);
@@ -182,6 +187,7 @@ const Notifications = () => {
         const isProcessing = processing[notifId];
         const isJoinRequest = notification.type === 'join_request';
         const isFriendRequest = notification.type === 'friend_request';
+        const isRideCompleted = notification.type === 'ride_completed' && notification.action && notification.action.type === 'open_buddy_feedback';
         const requesterName = notification.user_name;
         const requesterHandle = notification.user_username ? `@${notification.user_username}` : null;
         const displayMessage = isJoinRequest && requesterName
@@ -191,11 +197,24 @@ const Notifications = () => {
           ? parseServerDate(notification.created_at)?.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, hourCycle: 'h12', month: 'short', day: 'numeric' })
           : notification.timestamp;
 
+        // Handler for ride completed notification
+        const handleRideCompleted = () => {
+          if (notification.ride_info && notification.ride_info.rideId) {
+            // Pass rideId and partners as needed
+            router.push({
+              pathname: '/(app)/(completeRide)/partnerFeedback',
+              params: { rideId: notification.ride_info.rideId }
+            });
+          }
+        };
+
         return (
           <CardButton
             key={notifId}
             onPress={
-              (isJoinRequest || isFriendRequest) && (notification.related_user_handle || notification.user_username || notification.user_handle || notification.related_user_id)
+              isRideCompleted
+                ? handleRideCompleted
+                : (isJoinRequest || isFriendRequest) && (notification.related_user_handle || notification.user_username || notification.user_handle || notification.related_user_id)
                 ? () => {
                     // Prefer handle if available, else fallback to user id
                     const handle = notification.related_user_handle || notification.user_username || notification.user_handle;

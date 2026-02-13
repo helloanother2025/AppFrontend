@@ -49,6 +49,22 @@ export default function TabsLayout() {
                     options={{
                       title: 'Ride Status',
                       tabBarIcon: ({ color }) => <FontAwesome name="car" color={color} size={18} />,
+                      tabBarButton: (props) => {
+                        const { onPress, ...rest } = props;
+                        const { Pressable } = require('react-native');
+                        const { useRouter } = require('expo-router');
+                        const router = useRouter();
+                        return (
+                          <Pressable
+                            {...rest}
+                            onPress={() => {
+                              router.replace('/(dashboard)/(rides)');
+                            }}
+                          >
+                            {props.children}
+                          </Pressable>
+                        );
+                      },
                     }}
                   />
                   <Tabs.Screen

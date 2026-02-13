@@ -1,6 +1,11 @@
+
 import React, { createContext, useContext, useCallback, useRef, useState } from 'react';
 import { ridesAPI } from '../src/api/rides';
 import { normalizeRideList, normalizeRide } from '../src/utils/rideMapper';
+
+// Update a ride's passengers in myRides and joinedRides by rideId
+// (must be after getRideDetails is defined)
+
 
 const RideContext = createContext();
 
@@ -238,6 +243,16 @@ export const RideProvider = ({ children }) => {
     }
   }, [selectedRide]);
 
+
+  // Update a ride's passengers in myRides and joinedRides by rideId
+  const updateRidePassengers = useCallback(async (rideId) => {
+    const ride = await getRideDetails(rideId);
+    if (ride) {
+      setMyRides((prev) => prev.map((r) => String(r.id) === String(ride.id) ? { ...r, ...ride } : r));
+      setJoinedRides((prev) => prev.map((r) => String(r.id) === String(ride.id) ? { ...r, ...ride } : r));
+    }
+  }, [getRideDetails]);
+
   return (
     <RideContext.Provider
       value={{
@@ -259,6 +274,7 @@ export const RideProvider = ({ children }) => {
         updateRideStatus,
         deleteRide,
         selectRide,
+        updateRidePassengers,
       }}
     >
       {children}

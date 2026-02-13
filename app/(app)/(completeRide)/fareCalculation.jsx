@@ -83,9 +83,17 @@ export default function FareCalculation() {
         actualFare: parseFloat(currentRide.fare || 0),
         completionTime: new Date().toISOString(),
       });
+      // Fetch latest ride details to ensure up-to-date partners list
+      const latestRide = await getRideDetails(currentRide.id);
       Alert.alert('Success', 'Fare payment complete');
-      router.push('/(dashboard)/(rides)/rides');
-      //router.push('/(app)/(completeRide)/partnerFeedback'); // Navigate to Partner Feedback form
+      if (latestRide && Array.isArray(latestRide.partners)) {
+        router.push({
+          pathname: '/(app)/(completeRide)/partnerFeedback',
+          params: { participants: JSON.stringify(latestRide.partners) }
+        });
+      } else {
+        router.push('/(app)/(completeRide)/partnerFeedback');
+      }
     } catch (error) {
       Alert.alert('Error', error.message || 'Failed to complete ride');
     } finally {

@@ -42,7 +42,10 @@ const RideDetails = () => {
 
   return (
     <ScrollView>
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => router.back()}
+      >
         <FontAwesome style={{marginRight: 10}} name="chevron-left" size={14} color="black" />
         <Text style={{fontSize: 16, fontWeight: 'semibold'}}>Back</Text>
       </TouchableOpacity>
@@ -54,12 +57,11 @@ const RideDetails = () => {
         ongoing={(() => {
           const status = String(ride?.status ?? ride?.currentStatus ?? ride?.current_status ?? '').toLowerCase();
           const fareStatus = String(ride?.fareStatus ?? '').toLowerCase();
-          if (['cancelled', 'expired'].includes(status)) return false;
+          if (["cancelled", "expired"].includes(status)) return false;
           if (status === 'completed' && fareStatus === 'complete') return false;
           return true;
         })()}
       />
-      
     </ScrollView>
   );
 };
