@@ -54,40 +54,9 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
     userGender !== genderPreference;
   const rideStatus = String(ride?.status ?? ride?.currentStatus ?? ride?.current_status ?? '').toLowerCase();
   const completionTime = ride?.completion_time ?? ride?.completionTime;
-  const fareStatus = String(ride?.fareStatus ?? '').toLowerCase();
   const isRideCompleted = rideStatus === 'completed' || !!completionTime;
-  const isFareComplete = fareStatus === 'complete';
-  const isFarePending = fareStatus === 'pending';
-
-  // handleRequest and restriction logic only relevant for join mode
-  const handleRequest = async () => {
-    if (!join) return;
-    // ...existing code for join mode only...
-  };
-
-  const handleComplete = async () => {
-    if (isRideCompleted && isFareComplete) {
-      return;
-    }
-
-    try {
-      let updated = ride;
-      if (!isRideCompleted) {
-        updated = await updateRideStatus(ride?.id, 'completed');
-      }
-      // Always normalize before selecting
-      selectRide(updated || ride);
-      router.push('/fareCalculation');
-      setIsCompleted(true);
-    } catch (error) {
-      const message = error?.message || 'Failed to complete ride';
-      if (message.toLowerCase().includes('not authorized')) {
-        Alert.alert('You are not authorized');
-      } else {
-        Alert.alert('Error', message);
-      }
-    }
-  };
+  const isRideCancelled = rideStatus === 'cancelled';
+  const isRideExpired = rideStatus === 'expired';
 
   const handleStartRide = async () => {
     if (!ride?.id) {
@@ -150,7 +119,7 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
       )}
       
       {/* Start location */}
-      <View style={[styles.rideRow, { marginVertical: 0 }]}>
+      <View style={[styles.rideRow, { marginVertical: 0 }]}> 
         <Octicons name="dot-fill" size={18} color="#e63e4c" style={styles.icon} />
         <View style={{ flex: 1 }}>
           <BorderText style={styles.rideText}>{ride.start.name}</BorderText>
@@ -158,7 +127,7 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
       </View>
 
       {/* Destination */}
-      <View style={[styles.rideRow, { marginVertical: 0 }]}>
+      <View style={[styles.rideRow, { marginVertical: 0 }]}> 
         <Entypo name="location-pin" size={18} color="#e63e4c" style={styles.icon} />
         <View style={{ flex: 1 }}>
           <BorderText style={styles.rideText}>{ride.destination.name}</BorderText>
@@ -167,21 +136,20 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
 
       {/* Time & date */}
       {ride.date.day && ride.date.time && (
-        <View style={styles.rideRow}>
+        <View style={styles.rideRow}> 
           <FontAwesome name="clock-o" size={14} color="#888" style={[styles.icon, { marginLeft: 4 }]} />
           <View style={{ flex: 1 }}>
             <Text style={styles.rideText}>{ride.date.day}, {ride.date.time}</Text>
           </View>
         </View>
       )}
-      
 
       {/* Transport, seats, fare */}
       {ride.transportMode && (
-        <View style={styles.transportContainer}>
+        <View style={styles.transportContainer}> 
           <View style={{ width: '33%', flex: 1, alignItems: 'center' }}>
             <Text style={{ fontSize: 12 }}>Transport</Text>
-            <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>
+            <Text style={[styles.rideText, { fontWeight: 'semibold' }]}> 
               {ride.transportMode === 'Car' && ride.rideProvider ? `Car (${ride.rideProvider})` : ride.transportMode}
             </Text>
           </View>
@@ -209,79 +177,102 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
           </View>
         </View>
       )}
-      
 
-      {/* All action buttons removed for clean slate */}
-
-      {/* Action buttons for completing or calculating fare are intentionally removed for clean slate */}
-
-      {(create && ride.preferences) && ( <>
-        <View style={styles.subtitle}>
-          <Text style={[styles.rideText,{fontWeight: 'semibold'}]}>Preferences</Text>
+      {/* Preferences section */}
+      {(create && ride.preferences) && (
+        <View>
+          <View style={styles.subtitle}> 
+            <Text style={[styles.rideText,{fontWeight: 'semibold'}]}>Preferences</Text>
+          </View>
+          <BorderView>
+            <View style={{flexDirection: 'row'}}>
+              <View style={styles.rideColumn}> 
+                <Text style={styles.rideText}>Total passengers:</Text>
+              </View>
+              <View style={styles.rideColumn}> 
+                <Text style={styles.rideText}>{ride.partners.length} / {ride.totalPassengers}</Text>
+              </View>
+            </View>
+            <View style={{flexDirection: 'row'}}>
+              <View style={styles.rideColumn}> 
+                <Text style={styles.rideText}>Preferred gender:</Text>
+              </View>
+              <View style={styles.rideColumn}> 
+                <Text style={styles.rideText}>{ride.gender}</Text>
+              </View>
+            </View>
+            <View style={{flexDirection: 'row'}}>
+              <View style={styles.rideColumn}> 
+                <Text style={styles.rideText}>Other:</Text>
+              </View>
+              <View style={styles.rideColumn}> 
+                <Text style={styles.rideText}>{ride.preferences ? ride.preferences : '-'}</Text>
+              </View>
+            </View>
+          </BorderView>
         </View>
-
-        <BorderView>
-          <View style={{flexDirection: 'row'}}>
-            <View style={styles.rideColumn}>
-              <Text style={styles.rideText}>Total passengers:</Text>
-            </View>
-            <View style={styles.rideColumn}>
-              <Text style={styles.rideText}>{ride.partners.length} / {ride.totalPassengers}</Text>
-            </View>
-          </View>
-
-          <View style={{flexDirection: 'row'}}>
-            <View style={styles.rideColumn}>
-              <Text style={styles.rideText}>Preferred gender:</Text>
-            </View>
-            <View style={styles.rideColumn}>
-              <Text style={styles.rideText}>{ride.gender}</Text>
-            </View>
-          </View>
-
-          <View style={{flexDirection: 'row'}}>
-            <View style={styles.rideColumn}>
-              <Text style={styles.rideText}>Other:</Text>
-            </View>
-            <View style={styles.rideColumn}>
-              <Text style={styles.rideText}>{ride.preferences ? ride.preferences : '-'}</Text>
-            </View>
-          </View>
-        </BorderView>
-      </>
       )}
-      {/* Start Ride button always at the bottom */}
-      {showStartButton && (
-        <Button
-          title="Start Ride"
-          style={{ marginTop: 16, marginBottom: 4, backgroundColor: '#000' }}
-          textStyle={{ color: '#fff', fontWeight: 'bold' }}
-          onPress={async () => {
-            try {
-              const updated = await updateRideStatus(ride.id, 'started');
-              selectRide(updated || ride);
-              Alert.alert('Success', 'Ride has started!');
-            } catch (e) {
-              Alert.alert('Error', 'Failed to start ride');
-            }
-          }}
-        />
+
+      {/* Removed duplicate Complete Ride button. Only side-by-side buttons remain. */}
+
+      {/* Show Start and Cancel buttons for created rides (unactive status) */}
+      {isOwnRide && rideStatus === 'unactive' && !isRideCompleted && !isRideCancelled && !isRideExpired && (
+        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 16, marginBottom: 4 }}>
+          <Button
+            title="Start Ride"
+            style={{ width: 140, height: 48, marginRight: 8, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}
+            textStyle={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}
+            onPress={handleStartRide}
+          />
+          <Button
+            title="Cancel Ride"
+            style={{ width: 140, height: 48, marginLeft: 8, backgroundColor: '#e63e4c', alignItems: 'center', justifyContent: 'center' }}
+            textStyle={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}
+            onPress={async () => {
+              try {
+                const updated = await updateRideStatus(ride.id, 'cancelled');
+                selectRide(updated || ride);
+                Alert.alert('Success', 'Ride has been cancelled!');
+              } catch (e) {
+                Alert.alert('Error', 'Failed to cancel ride');
+              }
+            }}
+          />
+        </View>
       )}
-      {showCompleteButton && (
-        <Button
-          title="Complete Ride"
-          style={{ marginTop: 16, marginBottom: 4, backgroundColor: '#000' }}
-          textStyle={{ color: '#fff', fontWeight: 'bold' }}
-          onPress={async () => {
-            try {
-              const updated = await updateRideStatus(ride.id, 'completed');
-              selectRide(updated || ride);
-              Alert.alert('Success', 'Ride has been completed!');
-            } catch (e) {
-              Alert.alert('Error', 'Failed to complete ride');
-            }
-          }}
-        />
+
+      {/* Show Complete Ride and Cancel Ride buttons side by side for ongoing rides only, no Start button */}
+      {(rideStatus === 'started' && !isRideCompleted && !isRideCancelled && !isRideExpired && rideStatus !== 'ongoing') && (
+        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 16, marginBottom: 4 }}>
+            <Button
+              title="Complete"
+            style={{ width: 140, height: 48, marginRight: 8, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}
+            textStyle={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}
+            onPress={async () => {
+              try {
+                const updated = await updateRideStatus(ride.id, 'completed');
+                selectRide(updated || ride);
+                Alert.alert('Success', 'Ride has been completed!');
+              } catch (e) {
+                Alert.alert('Error', 'Failed to complete ride');
+              }
+            }}
+          />
+            <Button
+              title="Cancel Ride"
+            style={{ width: 140, height: 48, marginLeft: 8, backgroundColor: '#e63e4c', alignItems: 'center', justifyContent: 'center' }}
+            textStyle={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}
+            onPress={async () => {
+              try {
+                const updated = await updateRideStatus(ride.id, 'cancelled');
+                selectRide(updated || ride);
+                Alert.alert('Success', 'Ride has been cancelled!');
+              } catch (e) {
+                Alert.alert('Error', 'Failed to cancel ride');
+              }
+            }}
+          />
+        </View>
       )}
     </CardButton>
   );

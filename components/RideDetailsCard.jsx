@@ -172,22 +172,38 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
 
   return (
     <Card>
-      {/* Start Ride and Complete Ride buttons for own created rides */}
-      {isOwnRide && rideStatus === 'unactive' && (
-        <Button
-          title="Start Ride"
-          style={{ marginBottom: 16, backgroundColor: '#000' }}
-          textStyle={{ color: '#fff', fontWeight: 'bold' }}
-          onPress={async () => {
-            try {
-              const updated = await updateRideStatus(ride.id, 'started');
-              selectRide(updated || ride);
-              Alert.alert('Success', 'Ride has started!');
-            } catch (e) {
-              Alert.alert('Error', 'Failed to start ride');
-            }
-          }}
-        />
+      {/* Start/Cancel buttons for own created rides, only if not ongoing */}
+      {isOwnRide && rideStatus === 'unactive' && rideStatus !== 'ongoing' && (
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
+          <Button
+            title="Start Ride"
+            style={{ flex: 1, marginRight: 8, backgroundColor: '#000' }}
+            textStyle={{ color: '#fff', fontWeight: 'bold' }}
+            onPress={async () => {
+              try {
+                const updated = await updateRideStatus(ride.id, 'started');
+                selectRide(updated || ride);
+                Alert.alert('Success', 'Ride has started!');
+              } catch (e) {
+                Alert.alert('Error', 'Failed to start ride');
+              }
+            }}
+          />
+          <Button
+            title="Cancel Ride"
+            style={{ flex: 1, marginLeft: 8, backgroundColor: '#e63e4c' }}
+            textStyle={{ color: '#fff', fontWeight: 'bold' }}
+            onPress={async () => {
+              try {
+                const updated = await updateRideStatus(ride.id, 'cancelled');
+                selectRide(updated || ride);
+                Alert.alert('Success', 'Ride has been cancelled!');
+              } catch (e) {
+                Alert.alert('Error', 'Failed to cancel ride');
+              }
+            }}
+          />
+        </View>
       )}
       {isOwnRide && rideStatus === 'started' && (
         <Button
