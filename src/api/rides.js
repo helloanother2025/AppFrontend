@@ -42,10 +42,7 @@ export const ridesAPI = {
    */
   getAvailableRides: async (filters = {}) => {
     try {
-      const params = {
-        page: filters.page || 1,
-        limit: filters.limit || 10,
-      };
+      const params = {};
 
       if (filters.transportMode) params.transportMode = filters.transportMode;
       if (filters.genderPreference) params.genderPreference = filters.genderPreference;

@@ -26,7 +26,7 @@ export default function ChooseRoute() {
           if (directions?.polyline) {
             setRideData(prevDetails => ({
               ...prevDetails,
-              routePolyline: directions.polyline,
+              routePolyline: JSON.stringify(directions.polyline),
             }));
           }
         } catch (error) {

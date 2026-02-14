@@ -61,7 +61,7 @@ export default function CreateRide() {
               setRideData({
                 ...ride,
                 date: {day: '', time: ''},
-                partners: [],
+                status: 'unactive', // Set status to unactive for renewed ride
               });
           
               router.push('/(createRide)/resetDate');

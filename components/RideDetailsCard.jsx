@@ -175,7 +175,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
       {/* Start Ride and Complete Ride buttons for own created rides */}
       {isOwnRide && rideStatus === 'unactive' && (
         <Button
-          title="Start Ride"
+          title="Start ride"
           style={{ marginBottom: 16, backgroundColor: '#000' }}
           textStyle={{ color: '#fff', fontWeight: 'bold' }}
           onPress={async () => {
@@ -191,11 +191,15 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
       )}
       {isOwnRide && rideStatus === 'started' && (
         <Button
-          title="Complete Ride"
+          title="Complete ride"
           style={{ marginBottom: 16, backgroundColor: '#000' }}
           textStyle={{ color: '#fff', fontWeight: 'bold' }}
           onPress={() => {
-            router.push('/fareCalculation');
+            selectRide(ride);
+            router.push({
+              pathname: '/complete',
+              params: { ride: JSON.stringify(ride) }
+            });
           }}
         />
       )}
@@ -221,8 +225,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
           </View>
         </>
       )}
-      
-      {/* Action buttons for completing or calculating fare are intentionally removed for clean slate */}
+  
 
       {/* Start location */}
       <View style={styles.rideRow}>
@@ -376,7 +379,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
         </View>
       </View>
 
-      {/* Fare Breakdown */}
+      {/* Fare Breakdown 
       <View style={styles.subtitle}>
         <TouchableOpacity style={{ flexDirection: 'row' }} onPress={() => setShowBreakdown(!showBreakdown)}>
           <Text style={[styles.rideText, { fontWeight: 'bold' }]}>Fare Breakdown </Text>
@@ -407,6 +410,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
           ))}
         </BorderView>
       )}
+      */}
     </Card>
   );
 }

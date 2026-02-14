@@ -66,70 +66,73 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
   };
 
   const handleComplete = async () => {
-    if (isRideCompleted && isFareComplete) {
-      return;
-    }
-
-    try {
-      let updated = ride;
-      if (!isRideCompleted) {
-        updated = await updateRideStatus(ride?.id, 'completed');
+      if (isRideCompleted && isFareComplete) {
+        return;
       }
-      // Always normalize before selecting
-      selectRide(updated || ride);
-      router.push('/fareCalculation');
-      setIsCompleted(true);
-    } catch (error) {
-      const message = error?.message || 'Failed to complete ride';
-      if (message.toLowerCase().includes('not authorized')) {
-        Alert.alert('You are not authorized');
-      } else {
-        Alert.alert('Error', message);
+  
+      try {
+        let updated = ride;
+        if (!isRideCompleted) {
+          updated = await updateRideStatus(ride?.id, 'completed');
+        }
+        // Always normalize before selecting
+        selectRide(updated || ride);
+        Alert.alert('Success', 'Ride has been completed!');
+        router.push({
+          pathname: '/complete',
+          params: { ride: JSON.stringify(updated || ride) }
+        });
+        setIsCompleted(true);
+      } catch (error) {
+        const message = error?.message || 'Failed to complete ride';
+        if (message.toLowerCase().includes('not authorized')) {
+          Alert.alert('You are not authorized');
+        } else {
+          Alert.alert('Error', message);
+        }
       }
-    }
-  };
-
-  const handleStartRide = async () => {
-    if (!ride?.id) {
-      Alert.alert('Error', 'Ride information missing');
-      return;
-    }
-
-    try {
-      const updated = await updateRideStatus(ride.id, 'ongoing');
-      selectRide(updated || ride);
-      Alert.alert('Success', 'Ride has started!');
-    } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to start ride');
-    }
-  };
-
-  // Determine if this is the user's own created ride and is unactive
-  const creatorId = ride?.creator_id ?? ride?.creator?.user_id ?? ride?.creator?.id;
-  const currentUserId = currentUser?.user_id ?? currentUser?.id;
-  const isOwnRide = creatorId && currentUserId && String(creatorId) === String(currentUserId);
-  const showStartButton = isOwnRide && rideStatus === 'unactive';
-  const showCompleteButton = isOwnRide && rideStatus === 'started';
-
-  return (
-    <CardButton onPress={onPress} disabled={onPress ? false : true}>
-      {/* Only show gender badge and any restriction/join UI in join/create mode */}
-      {join && ride.gender != 'Any' && (
-        <View
-          style={[
-            styles.genderBadge,
-            ride.gender.toLowerCase() === 'female' ? styles.femaleBadge : styles.maleBadge
-          ]}>
-          <Text style={styles.genderText}>
-            {ride.gender.toLowerCase() === 'female' ? 'Female only' : 'Male only'}
-          </Text>
-        </View>
-      )}
-
-      {/* Ride creator */}
-      {(join || create || ongoing) && (
-        <TouchableOpacity
-          style={styles.creatorRow}
+    };
+  
+    const handleStartRide = async () => {
+      if (!ride?.id) {
+        Alert.alert('Error', 'Ride information missing');
+        return;
+      }
+  
+      try {
+        const updated = await updateRideStatus(ride.id, 'started');
+        selectRide(updated || ride);
+        Alert.alert('Success', 'Ride has started!');
+      } catch (error) {
+        Alert.alert('Error', error.message || 'Failed to start ride');
+      }
+    };
+  
+    // Determine if this is the user's own created ride and is unactive
+    const creatorId = ride?.creator_id ?? ride?.creator?.user_id ?? ride?.creator?.id;
+    const currentUserId = currentUser?.user_id ?? currentUser?.id;
+    const isOwnRide = creatorId && currentUserId && String(creatorId) === String(currentUserId);
+    const showStartButton = isOwnRide && rideStatus === 'unactive';
+    const showCompleteButton = isOwnRide && rideStatus === 'started';
+  
+    return (
+      <CardButton onPress={onPress} disabled={onPress ? false : true}>
+        {/* Only show gender badge and any restriction/join UI in join/create mode */}
+        {join && ride.gender != 'Any' && (
+          <View
+            style={[
+              styles.genderBadge,
+              ride.gender.toLowerCase() === 'female' ? styles.femaleBadge : styles.maleBadge
+            ]}>
+            <Text style={styles.genderText}>
+              {ride.gender.toLowerCase() === 'female' ? 'Female only' : 'Male only'}
+            </Text>
+          </View>
+        )}
+        
+        {/* Ride creator */}
+        {(join || create || ongoing) && (
+          <TouchableOpacity          style={styles.creatorRow}
           activeOpacity={0.7}
           onPress={() => {
             // Only navigate if not current user
@@ -253,7 +256,7 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
       {/* Start Ride button always at the bottom */}
       {showStartButton && (
         <Button
-          title="Start Ride"
+          title="Start ride"
           style={{ marginTop: 16, marginBottom: 4, backgroundColor: '#000' }}
           textStyle={{ color: '#fff', fontWeight: 'bold' }}
           onPress={async () => {
@@ -269,18 +272,10 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
       )}
       {showCompleteButton && (
         <Button
-          title="Complete Ride"
+          title="Complete ride"
           style={{ marginTop: 16, marginBottom: 4, backgroundColor: '#000' }}
           textStyle={{ color: '#fff', fontWeight: 'bold' }}
-          onPress={async () => {
-            try {
-              const updated = await updateRideStatus(ride.id, 'completed');
-              selectRide(updated || ride);
-              Alert.alert('Success', 'Ride has been completed!');
-            } catch (e) {
-              Alert.alert('Error', 'Failed to complete ride');
-            }
-          }}
+          onPress={handleComplete}
         />
       )}
     </CardButton>

@@ -1,23 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { calculateFareBreakdown } from '../../../src/utils/fareCalc';
-import { View, StyleSheet, Alert } from 'react-native'
-import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView'
-import { StyledText as Text } from '../../../components/StyledText'
-import { StyledTitle as Title } from '../../../components/StyledTitle' 
-import { StyledCardButton as CardButton } from '../../../components/StyledCardButton'
-import { StyledButton as Button } from '../../../components/StyledButton'
+import { calculateFareBreakdown, getMethodDisplayText, getMethodDescription } from '../../../src/utils/fareCalc';
+import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView';
+import { StyledText as Text } from '../../../components/StyledText';
+import { StyledTitle as Title } from '../../../components/StyledTitle';
+import { StyledCardButton as CardButton } from '../../../components/StyledCardButton';
+import { StyledButton as Button } from '../../../components/StyledButton';
 import { useRouter } from 'expo-router';
-import { getDistance } from '../../../src/utils/mapServices'
 import { normalizeRide } from '../../../src/utils/rideMapper';
 import { useRide } from '../../../context/RideContext';
-
-
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 export default function FareCalculation() {
   const { selectedRide, myRides, joinedRides, rides: availableRides, completeRide, loading, getRideDetails } = useRide();
   const [currentRide, setCurrentRide] = useState(null);
   const [fareBreakdown, setFareBreakdown] = useState([]);
   const [completing, setCompleting] = useState(false);
+  const [calculationMethod, setCalculationMethod] = useState('distance'); // 'equal' or 'distance'
   const router = useRouter();
 
   // Fetch latest ride details on mount
@@ -29,19 +28,14 @@ export default function FareCalculation() {
     }
     if (rideId) {
       getRideDetails(rideId).then((fetched) => {
-        setCurrentRide(fetched ? normalizeRide(fetched) : null);
+        setCurrentRide(fetched || null);
       });
     } else {
       setCurrentRide(null);
     }
   }, [selectedRide, myRides, joinedRides, availableRides]);
 
-  // Debug logging
-  useEffect(() => {
-    // Logging removed
-  }, [selectedRide, myRides, joinedRides, availableRides, currentRide]);
-
-  // Calculate fare breakdown
+  // Calculate fare breakdown when ride or method changes
   useEffect(() => {
     if (
       currentRide &&
@@ -52,7 +46,7 @@ export default function FareCalculation() {
       currentRide.partners
     ) {
       try {
-        const { breakdown } = calculateFareBreakdown(currentRide);
+        const { breakdown } = calculateFareBreakdown(currentRide, calculationMethod);
         setFareBreakdown(breakdown);
       } catch (e) {
         console.warn('Fare breakdown error:', e);
@@ -61,7 +55,7 @@ export default function FareCalculation() {
     } else {
       setFareBreakdown([]);
     }
-  }, [currentRide]);
+  }, [currentRide, calculationMethod]);
 
   const handleCompleteRide = async () => {
     if (!currentRide || !currentRide.id) {
@@ -114,6 +108,8 @@ export default function FareCalculation() {
   return (
     <ScrollView>
       <Title>Ride participants</Title>
+      
+      {/* Participants Card */}
       <CardButton>
         <View style={{width: '100%'}}>
           <View style={styles.participantRow}>
@@ -141,6 +137,56 @@ export default function FareCalculation() {
         </View>
       </CardButton>
 
+      {/* Calculation Method Toggle */}
+      <View style={styles.methodContainer}>
+        <Text style={styles.methodLabel}>Fare calculation:</Text>
+        <View style={styles.methodToggle}>
+          <TouchableOpacity
+            style={[
+              styles.methodOption,
+              calculationMethod === 'equal' && styles.methodOptionActive
+            ]}
+            onPress={() => setCalculationMethod('equal')}
+          >
+            <FontAwesome 
+              name="users" 
+              size={14} 
+              color={calculationMethod === 'equal' ? '#fff' : '#666'} 
+            />
+            <Text style={[
+              styles.methodOptionText,
+              calculationMethod === 'equal' && styles.methodOptionTextActive
+            ]}>
+              Equal Split
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[
+              styles.methodOption,
+              calculationMethod === 'distance' && styles.methodOptionActive
+            ]}
+            onPress={() => setCalculationMethod('distance')}
+          >
+            <FontAwesome 
+              name="road" 
+              size={14} 
+              color={calculationMethod === 'distance' ? '#fff' : '#666'} 
+            />
+            <Text style={[
+              styles.methodOptionText,
+              calculationMethod === 'distance' && styles.methodOptionTextActive
+            ]}>
+              Distance-Based
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.methodDescription}>
+          {getMethodDescription(calculationMethod)}
+        </Text>
+      </View>
+
+      {/* Fare Breakdown Card */}
       <CardButton>
         <View style={{width: '100%'}}>
           <View style={styles.fareRow}>
@@ -148,13 +194,49 @@ export default function FareCalculation() {
             <Text style={styles.fareValue}>BDT {currentRide.fare}</Text>
           </View>
 
+          <View style={styles.divider} />
+
+          {/* Column Headers */}
+          {calculationMethod === 'distance' && (
+            <View style={[styles.fareRow, styles.headerRow]}>
+              <Text style={styles.headerText}>Person</Text>
+              <Text style={styles.headerText}>Distance</Text>
+              <Text style={styles.headerText}>Share</Text>
+            </View>
+          )}
+
+          {/* Breakdown Rows */}
           {fareBreakdown.map((p, i) => (
-            <View key={`${p.name || ''}-${p.handle || ''}-${i}`} style={styles.fareRow}>
-              <Text>{p.handle}</Text>
-              <Text>{p.distance.toFixed(2)} km</Text>
-              <Text>BDT {p.fare}</Text>
+            <View key={`${p.name || ''}-${p.handle || ''}-${i}`} style={styles.breakdownRow}>
+              <View style={styles.personInfo}>
+                <Text style={styles.personName}>{p.name}</Text>
+                <Text style={styles.personHandle}>@{p.handle}</Text>
+              </View>
+              
+              {calculationMethod === 'distance' && (
+                <View style={styles.distanceInfo}>
+                  <Text style={styles.distanceText}>{(p.distance ?? 0).toFixed(2)} km</Text>
+                </View>
+              )}
+              
+              <View style={styles.fareInfo}>
+                <Text style={styles.fareText}>BDT {p.fare}</Text>
+              </View>
             </View>
           ))}
+
+          {/* Summary */}
+          <View style={styles.divider} />
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryText}>
+              {fareBreakdown.length} {fareBreakdown.length === 1 ? 'participant' : 'participants'}
+            </Text>
+            {calculationMethod === 'distance' && (
+              <Text style={styles.summaryText}>
+                Total: {fareBreakdown.reduce((sum, p) => sum + parseFloat(p.fare), 0).toFixed(2)} BDT
+              </Text>
+            )}
+          </View>
         </View>
       </CardButton>
 
@@ -193,6 +275,55 @@ const styles = StyleSheet.create({
     fontSize: 13,
     flex: 1,
   },
+  
+  // Method Selection
+  methodContainer: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  methodLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#333',
+  },
+  methodToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#e6e6e6',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 8,
+  },
+  methodOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  methodOptionActive: {
+    backgroundColor: '#1f1f1f',
+  },
+  methodOptionText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#666',
+  },
+  methodOptionTextActive: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  methodDescription: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+
+  // Fare Breakdown
   fareRow: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
@@ -201,16 +332,76 @@ const styles = StyleSheet.create({
   },
   fareLabel: { 
     fontSize: 16, 
-    color: '#333' 
+    color: '#333',
+    fontWeight: '600',
   },
   fareValue: { 
-    fontSize: 16, 
-    fontWeight: 'semibold' 
+    fontSize: 18, 
+    fontWeight: 'bold',
+    color: '#1f1f1f',
   },
-  totalRow: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#ddd'
+  divider: {
+    height: 1,
+    backgroundColor: '#e0e0e0',
+    marginVertical: 12,
   },
-})
+  headerRow: {
+    marginBottom: 8,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  headerText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    textTransform: 'uppercase',
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  personInfo: {
+    flex: 2,
+  },
+  personName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1f1f1f',
+  },
+  personHandle: {
+    fontSize: 12,
+    color: '#888',
+  },
+  distanceInfo: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  distanceText: {
+    fontSize: 13,
+    color: '#333',
+  },
+  fareInfo: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
+  fareText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1f1f1f',
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  summaryText: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+});
