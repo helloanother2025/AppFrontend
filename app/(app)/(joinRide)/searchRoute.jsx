@@ -14,13 +14,23 @@ export default function SearchRoute() {
   const [dest, setDest] = useState(searchData.destination || null);
 
   const save = async () => {
+    const getCoords = (loc) => {
+      if (!loc) return null;
+      if (loc.coords) return { latitude: loc.coords.lat ?? loc.coords.latitude, longitude: loc.coords.lng ?? loc.coords.longitude };
+      if (loc.geometry?.location) return { latitude: loc.geometry.location.lat, longitude: loc.geometry.location.lng };
+      const lat = loc.lat ?? loc.latitude;
+      const lng = loc.lng ?? loc.longitude;
+      if (lat !== undefined && lng !== undefined) return { latitude: lat, longitude: lng };
+      return null;
+    };
+
+    const startCoords = getCoords(start);
+    const destCoords = getCoords(dest);
     let polyline = null;
 
     // Fetch polyline if both start and destination have coordinates
-    if (start?.coords && dest?.coords) {
+    if (startCoords && destCoords) {
       try {
-        const startCoords = { latitude: start.coords.lat, longitude: start.coords.lng };
-        const destCoords = { latitude: dest.coords.lat, longitude: dest.coords.lng };
         const directions = await getDirections(startCoords, destCoords);
         polyline = directions?.polyline ?? null;
       } catch (error) {

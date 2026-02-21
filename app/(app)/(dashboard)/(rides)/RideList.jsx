@@ -3,8 +3,8 @@ import { View, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { StyledText as Text } from '../../../../components/StyledText';
 import { StyledScrollView as ScrollView } from '../../../../components/StyledScrollView';
 import RideCard from '../../../../components/RideDisplayCard';
-import RideDetailsCard from '../../../../components/RideDetailsCard';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRide } from '../../../../context/RideContext';
 import { FontAwesome } from '@expo/vector-icons';
 
 
@@ -12,6 +12,7 @@ export default function RideList() {
   // Removed filter state
   const router = useRouter();
   const { rides: ridesParam, title } = useLocalSearchParams();
+  const { selectRide, updateRideStatus } = useRide();
   const [localRides, setLocalRides] = useState(() => {
     if (!ridesParam) return [];
     try {
@@ -64,7 +65,6 @@ export default function RideList() {
                   style={{marginTop: 8, backgroundColor: '#4caf50', borderRadius: 8, padding: 12, alignItems: 'center'}}
                   onPress={async () => {
                     try {
-                      const { updateRideStatus, selectRide } = require('../../../../context/RideContext');
                       const updated = await updateRideStatus(ride.id, 'started');
                       selectRide(updated || ride);
                       setLocalRides((prev) => prev.filter((r) => String(r.id) !== String(ride.id)));
@@ -81,10 +81,14 @@ export default function RideList() {
                 <TouchableOpacity
                   style={{marginTop: 8, backgroundColor: '#000', borderRadius: 8, padding: 12, alignItems: 'center'}}
                   onPress={() => {
-                    router.push('/fareCalculation');
+                    selectRide(ride);
+                    router.push({
+                      pathname: '../../(completeRide)/complete',
+                      params: { ride: JSON.stringify(ride) }
+                    });
                   }}
                 >
-                  <Text style={{color: 'white', fontWeight: 'bold'}}>Complete Ride</Text>
+                  <Text style={{color: 'white', fontWeight: 'bold'}}>Complete ride</Text>
                 </TouchableOpacity>
               )}
             </View>

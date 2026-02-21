@@ -117,7 +117,7 @@ export const getPlaceDetails = async (place) => {
 // Get directions between two coordinates
 export const getDirections = async (start, end) => {
   try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=polyline`;
+    const url = `https://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson`;
     
     const response = await fetch(url);
     const data = await response.json();
@@ -125,10 +125,10 @@ export const getDirections = async (start, end) => {
     if (data.routes && data.routes.length > 0) {
       const route = data.routes[0];
       return {
-        polyline: route.geometry, // Already in polyline format
+        polyline: route.geometry, // This is now a GeoJSON object
         distance: route.distance / 1000, // Convert to km
         duration: route.duration / 60, // Convert to minutes
-        coordinates: decodePolyline(route.geometry)
+        coordinates: route.geometry.coordinates.map(c => ({longitude: c[0], latitude: c[1]}))
       };
     }
     return null;

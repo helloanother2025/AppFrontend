@@ -20,10 +20,33 @@ const RouteMap = ({ ride, userStartCoords, userDestCoords, small = true, style, 
 
     // If polyline already exists, decode and use it directly
     if (ride.routePolyline) {
-      const decoded = decodePolyline(ride.routePolyline);
-      setRouteCoords(decoded);
+      if (typeof ride.routePolyline === 'string' && ride.routePolyline.trim() === '') {
+        // If it's an empty string, treat it as no polyline data
+        console.warn("ride.routePolyline is an empty string, treating as no polyline data.");
+        setRouteCoords([]);
+        return; 
+      }
+      try {
+        const geoJsonPolyline = typeof ride.routePolyline === 'string' ? JSON.parse(ride.routePolyline) : ride.routePolyline;
+        if (geoJsonPolyline && Array.isArray(geoJsonPolyline.coordinates) && geoJsonPolyline.coordinates.length > 0) {
+          // GeoJSON coordinates are [longitude, latitude], convert to {latitude, longitude}
+          const formattedCoords = geoJsonPolyline.coordinates.map(coord => ({
+            longitude: coord[0],
+            latitude: coord[1],
+          }));
+          setRouteCoords(formattedCoords);
+        } else {
+            console.warn("Parsed routePolyline is not a valid GeoJSON object or has no coordinates.");
+            console.log("Malformed geoJsonPolyline:", geoJsonPolyline); // ADDED LOG
+            fetchDirections(startCoords, destCoords, setRouteCoords); // Fallback if parsed but invalid
+        }
+      } catch (e) {
+        console.error("Error parsing stored routePolyline as GeoJSON:", e);
+        // Fallback to fetching if parsing fails
+        fetchDirections(startCoords, destCoords, setRouteCoords);
+      }
     } else {
-      // Otherwise, fetch 
+      // Otherwise, fetch or if ride.routePolyline is null/undefined
       fetchDirections(startCoords, destCoords, setRouteCoords);
     }
   }, [ride]);
@@ -70,7 +93,7 @@ const RouteMap = ({ ride, userStartCoords, userDestCoords, small = true, style, 
         {userStart && <CustomMarker coordinate={userStart} title="Your pickup" color="#888" iconName="circle" size={18}/>}
         {userDest && <CustomMarker coordinate={userDest} title="Your drop-off" color="#888" iconName="circle"  size={18}/>}
         {userRouteCoords.length > 0 && (
-          <Polyline coordinates={userRouteCoords} strokeWidth={4} strokeColor={userColor}/>
+          <Polyline coordinates={userRouteCoords} strokeWidth={3} strokeColor={userColor}/>
         )}
       </MapView>
     </View>

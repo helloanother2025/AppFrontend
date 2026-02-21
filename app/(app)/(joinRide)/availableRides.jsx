@@ -31,7 +31,7 @@ const AvailableRides = () => {
   const [selectedTimeFilter, setSelectedTimeFilter] = useState('All'); // 'All', 'Leave now', 'Schedule'
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const RADIUS_KM = 3; // Default search radius for backend
+  const RADIUS_KM = 10; // Default search radius for backend
 
   const handleTimeFilterChange = (filter) => {
     setSelectedTimeFilter(filter);
@@ -96,6 +96,7 @@ const AvailableRides = () => {
     }
     filters.timeFilter = selectedTimeFilter; // Pass the active time filter
     filters.searchType = searchType; // Pass the determined search type
+    console.log("Filters sent to fetchAvailableRides:", filters); // ADDED LOG
     await fetchAvailableRides(filters);
   }, [selectedTransport, selectedGender, date, selectedTimeFilter, searchData, fetchAvailableRides]);
 

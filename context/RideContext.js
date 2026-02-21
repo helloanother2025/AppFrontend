@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useCallback, useRef, useState } from 'react';
 import { ridesAPI } from '../src/api/rides';
 import { normalizeRideList, normalizeRide } from '../src/utils/rideMapper';
+import { useUser } from './UserContext';
 
 // Update a ride's passengers in myRides and joinedRides by rideId
 // (must be after getRideDetails is defined)
@@ -9,23 +10,38 @@ import { normalizeRideList, normalizeRide } from '../src/utils/rideMapper';
 
 const RideContext = createContext();
 
-const getInitialRideData = () => ({
-  creator: { name: '', handle: '' },
-  start: { name: '', coords: null },
-  destination: { name: '', coords: null },
-  transportMode: '',
-  rideProvider: '',
-  date: { day: '', time: '' },
-  totalPassengers: 0,
-  fare: '',
-  partners: [],
-  gender: 'Any',
-  preferences: '',
-  routePolyline: '',
-});
-
 export const RideProvider = ({ children }) => {
+  const { currentUser } = useUser();
+  const getInitialRideData = useCallback(() => ({
+    creator: { 
+      name: currentUser?.name || '', 
+      handle: currentUser?.username || currentUser?.handle || '' 
+    },
+    start: { name: '', coords: null },
+    destination: { name: '', coords: null },
+    transportMode: '',
+    rideProvider: '',
+    date: { day: '', time: '' },
+    totalPassengers: 0,
+    fare: '',
+    partners: [],
+    gender: 'Any',
+    preferences: '',
+    routePolyline: '',
+  }), [currentUser]);
+
   const [rideData, setRideData] = useState(getInitialRideData());
+
+  // Update rideData creator when currentUser changes
+  React.useEffect(() => {
+    setRideData(prev => ({
+      ...prev,
+      creator: { 
+        name: currentUser?.name || prev.creator.name, 
+        handle: currentUser?.username || currentUser?.handle || prev.creator.handle 
+      }
+    }));
+  }, [currentUser]);
 
   const [rides, setRides] = useState([]);
   const [myRides, setMyRides] = useState([]);
@@ -167,7 +183,7 @@ export const RideProvider = ({ children }) => {
 
   const resetRideData = useCallback(() => {
     setRideData(getInitialRideData());
-  }, []);
+  }, [getInitialRideData]);
 
   const completeRide = useCallback(async (rideId, completionData) => {
     setLoading(true);
@@ -203,16 +219,36 @@ export const RideProvider = ({ children }) => {
     setError(null);
     try {
       const response = await ridesAPI.updateRideStatus(rideId, status);
-      const updatedRide = normalizeRide(response?.ride ?? response?.data ?? response);
+      
+      let updatedRide = null;
+      if (response?.ride || response?.data) {
+        updatedRide = normalizeRide(response.ride ?? response.data);
+      } else {
+        updatedRide = { status }; // Partial update for UI
+      }
+
       if (updatedRide) {
         setRides((prev) => prev.map((r) => (String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r)));
         setMyRides((prev) => prev.map((r) => (String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r)));
         setJoinedRides((prev) => prev.map((r) => (String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r)));
-        setSelectedRide(updatedRide);
+        
+        if (updatedRide?.start) {
+          setSelectedRide(updatedRide);
+        } else {
+          setSelectedRide((prev) => (prev && String(prev.id) === String(rideId) ? { ...prev, ...updatedRide } : prev));
+        }
       }
+
       // Refresh rides lists to reflect status change
       await Promise.all([fetchMyRides(), fetchJoinedRides()]);
-      return updatedRide ?? response;
+
+      let finalReturnedRide = updatedRide;
+      if (!finalReturnedRide?.start) {
+        // Fetch full ride details if the backend didn't return them in the update response
+        finalReturnedRide = await getRideDetails(rideId);
+      }
+      
+      return finalReturnedRide ?? response;
     } catch (err) {
       console.error('Failed to update ride status:', err);
       setError(err.message || 'Failed to update ride status');
@@ -220,7 +256,7 @@ export const RideProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [fetchMyRides, fetchJoinedRides]);
+  }, [fetchMyRides, fetchJoinedRides, getRideDetails]);
 
   const deleteRide = useCallback(async (rideId) => {
     setLoading(true);

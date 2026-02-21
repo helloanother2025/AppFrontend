@@ -47,16 +47,57 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
   const isFull = maxPassengers > 0 && currentPassengers >= maxPassengers;
   const genderPreference = String(ride?.gender ?? ride?.gender_preference ?? '').toLowerCase();
   const userGender = String(currentUser?.gender ?? '').toLowerCase();
+  
   // Restriction logic only applies in join mode
   const isGenderRestricted =
     !!join && (genderPreference === 'male' || genderPreference === 'female') &&
     userGender &&
     userGender !== genderPreference;
+    
   const rideStatus = String(ride?.status ?? ride?.currentStatus ?? ride?.current_status ?? '').toLowerCase();
   const completionTime = ride?.completion_time ?? ride?.completionTime;
   const isRideCompleted = rideStatus === 'completed' || !!completionTime;
+  
+  // Consolidate status flags from both branches
+  const fareStatus = String(ride?.fareStatus ?? '').toLowerCase();
+  const isFareComplete = fareStatus === 'complete';
+  const isFarePending = fareStatus === 'pending';
   const isRideCancelled = rideStatus === 'cancelled';
   const isRideExpired = rideStatus === 'expired';
+
+  // handleRequest and restriction logic only relevant for join mode
+  const handleRequest = async () => {
+    if (!join) return;
+    // ...existing code for join mode only...
+  };
+
+  const handleComplete = async () => {
+    if (isRideCompleted && isFareComplete) {
+      return;
+    }
+
+    try {
+      let updated = ride;
+      if (!isRideCompleted) {
+        updated = await updateRideStatus(ride?.id, 'completed');
+      }
+      // Always normalize before selecting
+      selectRide(updated || ride);
+      Alert.alert('Success', 'Ride has been completed!');
+      router.push({
+        pathname: '/complete',
+        params: { ride: JSON.stringify(updated || ride) }
+      });
+      setIsCompleted(true);
+    } catch (error) {
+      const message = error?.message || 'Failed to complete ride';
+      if (message.toLowerCase().includes('not authorized')) {
+        Alert.alert('You are not authorized');
+      } else {
+        Alert.alert('Error', message);
+      }
+    }
+  };
 
   const handleStartRide = async () => {
     if (!ride?.id) {
@@ -65,7 +106,8 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
     }
 
     try {
-      const updated = await updateRideStatus(ride.id, 'ongoing');
+      // Consensus on 'started' as the status for ongoing rides
+      const updated = await updateRideStatus(ride.id, 'started');
       selectRide(updated || ride);
       Alert.alert('Success', 'Ride has started!');
     } catch (error) {
@@ -73,12 +115,13 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
     }
   };
 
-  // Determine if this is the user's own created ride and is unactive
+  // Determine if this is the user's own created ride and its status
   const creatorId = ride?.creator_id ?? ride?.creator?.user_id ?? ride?.creator?.id;
   const currentUserId = currentUser?.user_id ?? currentUser?.id;
   const isOwnRide = creatorId && currentUserId && String(creatorId) === String(currentUserId);
-  const showStartButton = isOwnRide && rideStatus === 'unactive';
-  const showCompleteButton = isOwnRide && rideStatus === 'started';
+  
+  const showStartButton = isOwnRide && rideStatus === 'unactive' && !isRideCompleted && !isRideCancelled && !isRideExpired;
+  const showCompleteButton = isOwnRide && rideStatus === 'started' && !isRideCompleted && !isRideCancelled && !isRideExpired;
 
   return (
     <CardButton onPress={onPress} disabled={onPress ? false : true}>
@@ -112,8 +155,8 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
         >
           <Text style={{ fontSize: 30 }}>👤 </Text>
           <View>
-            <Text style={{ fontWeight: 'semibold', fontSize: 16 }}>{ride.creator.name}</Text>
-            <Text style={styles.handle}>{ride.creator.handle}</Text>
+            <Text style={{ fontWeight: 'semibold', fontSize: 16 }}>{ride.creator.name || 'Unknown'}</Text>
+            <Text style={styles.handle}>{ride.creator.handle || '@user'}</Text>
           </View>
         </TouchableOpacity>
       )}
@@ -169,7 +212,7 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
 
           <View style={{ width: '33%', alignItems: 'center' }}>
             <Text style={{ fontSize: 12 }}>Total fare</Text>
-            {ride.fare === 'TBA' ? (
+            {ride.fare === 'TBA' || ride.fare === 0 || ride.fare === '0' || ride.fare === '0.00' ? (
               <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>TBA</Text>
             ) : (
               <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>BDT {ride.fare}</Text>
@@ -213,10 +256,8 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
         </View>
       )}
 
-      {/* Removed duplicate Complete Ride button. Only side-by-side buttons remain. */}
-
       {/* Show Start and Cancel buttons for created rides (unactive status) */}
-      {isOwnRide && rideStatus === 'unactive' && !isRideCompleted && !isRideCancelled && !isRideExpired && (
+      {showStartButton && (
         <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 16, marginBottom: 4 }}>
           <Button
             title="Start Ride"
@@ -241,25 +282,17 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
         </View>
       )}
 
-      {/* Show Complete Ride and Cancel Ride buttons side by side for ongoing rides only, no Start button */}
-      {(rideStatus === 'started' && !isRideCompleted && !isRideCancelled && !isRideExpired && rideStatus !== 'ongoing') && (
+      {/* Show Complete Ride and Cancel Ride buttons side by side for ongoing rides */}
+      {showCompleteButton && (
         <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 16, marginBottom: 4 }}>
-            <Button
-              title="Complete"
+          <Button
+            title="Complete Ride"
             style={{ width: 140, height: 48, marginRight: 8, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}
             textStyle={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}
-            onPress={async () => {
-              try {
-                const updated = await updateRideStatus(ride.id, 'completed');
-                selectRide(updated || ride);
-                Alert.alert('Success', 'Ride has been completed!');
-              } catch (e) {
-                Alert.alert('Error', 'Failed to complete ride');
-              }
-            }}
+            onPress={handleComplete}
           />
-            <Button
-              title="Cancel Ride"
+          <Button
+            title="Cancel Ride"
             style={{ width: 140, height: 48, marginLeft: 8, backgroundColor: '#e63e4c', alignItems: 'center', justifyContent: 'center' }}
             textStyle={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}
             onPress={async () => {

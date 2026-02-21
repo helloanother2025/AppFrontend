@@ -29,7 +29,13 @@ export default function RideCreated() {
       }
 
       if (!rideData.transportMode || !rideData.totalPassengers) {
-        setCreationError('Missing ride details. Please go back and complete all steps.');
+        console.warn('Missing ride details for submission:', {
+          transportMode: rideData.transportMode,
+          totalPassengers: rideData.totalPassengers,
+          start: !!rideData.start?.coords,
+          dest: !!rideData.destination?.coords
+        });
+        setCreationError(`Missing details: ${!rideData.transportMode ? 'Transport' : 'Passenger limit'}. Please complete all steps.`);
         return;
       }
 
@@ -62,7 +68,7 @@ export default function RideCreated() {
         const created = await createRide(payload);
         if (isMounted) {
           setCreatedRide(created);
-          resetRideData();
+          // Don't reset instantly to avoid flash of empty fallback data
         }
       } catch (error) {
         if (isMounted) {
