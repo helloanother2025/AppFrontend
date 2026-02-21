@@ -203,16 +203,36 @@ export const RideProvider = ({ children }) => {
     setError(null);
     try {
       const response = await ridesAPI.updateRideStatus(rideId, status);
-      const updatedRide = normalizeRide(response?.ride ?? response?.data ?? response);
+      
+      let updatedRide = null;
+      if (response?.ride || response?.data) {
+        updatedRide = normalizeRide(response.ride ?? response.data);
+      } else {
+        updatedRide = { status }; // Partial update for UI
+      }
+
       if (updatedRide) {
         setRides((prev) => prev.map((r) => (String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r)));
         setMyRides((prev) => prev.map((r) => (String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r)));
         setJoinedRides((prev) => prev.map((r) => (String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r)));
-        setSelectedRide(updatedRide);
+        
+        if (updatedRide?.start) {
+          setSelectedRide(updatedRide);
+        } else {
+          setSelectedRide((prev) => (prev && String(prev.id) === String(rideId) ? { ...prev, ...updatedRide } : prev));
+        }
       }
+
       // Refresh rides lists to reflect status change
       await Promise.all([fetchMyRides(), fetchJoinedRides()]);
-      return updatedRide ?? response;
+
+      let finalReturnedRide = updatedRide;
+      if (!finalReturnedRide?.start) {
+        // Fetch full ride details if the backend didn't return them in the update response
+        finalReturnedRide = await getRideDetails(rideId);
+      }
+      
+      return finalReturnedRide ?? response;
     } catch (err) {
       console.error('Failed to update ride status:', err);
       setError(err.message || 'Failed to update ride status');
@@ -220,7 +240,7 @@ export const RideProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [fetchMyRides, fetchJoinedRides]);
+  }, [fetchMyRides, fetchJoinedRides, getRideDetails]);
 
   const deleteRide = useCallback(async (rideId) => {
     setLoading(true);

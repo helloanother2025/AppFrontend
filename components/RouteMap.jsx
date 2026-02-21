@@ -27,7 +27,7 @@ const RouteMap = ({ ride, userStartCoords, userDestCoords, small = true, style, 
         return; 
       }
       try {
-        const geoJsonPolyline = JSON.parse(ride.routePolyline);
+        const geoJsonPolyline = typeof ride.routePolyline === 'string' ? JSON.parse(ride.routePolyline) : ride.routePolyline;
         if (geoJsonPolyline && Array.isArray(geoJsonPolyline.coordinates) && geoJsonPolyline.coordinates.length > 0) {
           // GeoJSON coordinates are [longitude, latitude], convert to {latitude, longitude}
           const formattedCoords = geoJsonPolyline.coordinates.map(coord => ({

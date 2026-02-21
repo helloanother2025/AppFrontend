@@ -1,5 +1,3 @@
-import * as polyline from '@mapbox/polyline';
-
 const toRad = (x) => (x * Math.PI) / 180;
 
 function haversineKm(a, b) {
@@ -58,6 +56,26 @@ function projectPointToRoute(location, routeCoords, thresholdKm = 2) {
   return { onRoute: bestMinDist <= thresholdKm, posKm: bestPosKm, minDistKm: bestMinDist };
 }
 
+function getParsedRouteCoords(routePolyline, rideStart, rideEnd) {
+  if (routePolyline) {
+    try {
+      const parsed = typeof routePolyline === 'string' ? JSON.parse(routePolyline) : routePolyline;
+      if (parsed && Array.isArray(parsed.coordinates) && parsed.coordinates.length > 0) {
+        return parsed.coordinates.map(coord => ({
+          longitude: coord[0],
+          latitude: coord[1],
+        }));
+      }
+    } catch (e) {
+      console.warn("Failed to parse routePolyline as GeoJSON:", e);
+    }
+  }
+  return [
+    { latitude: rideStart.lat, longitude: rideStart.lng },
+    { latitude: rideEnd.lat, longitude: rideEnd.lng },
+  ];
+}
+
 function calculateEqualSplit(currentRide, totalFare) {
   const participants = [];
   
@@ -105,12 +123,7 @@ function calculateDistanceRatio(currentRide, totalFare) {
   const rideEnd = currentRide.destination.coords;
 
   // Decode route polyline and compute total route length
-  const routeCoords = currentRide.routePolyline
-    ? polyline.decode(currentRide.routePolyline).map(([lat, lng]) => ({ latitude: lat, longitude: lng }))
-    : [
-        { latitude: rideStart.lat, longitude: rideStart.lng },
-        { latitude: rideEnd.lat, longitude: rideEnd.lng },
-      ];
+  const routeCoords = getParsedRouteCoords(currentRide.routePolyline, rideStart, rideEnd);
 
   let totalDistanceKm = 0;
   for (let i = 0; i < routeCoords.length - 1; i++) {
@@ -132,32 +145,32 @@ function calculateDistanceRatio(currentRide, totalFare) {
   // Partners: project onto route and cap within ride bounds
   // This ensures we only count distance traveled ON the ride's route
   for (const partner of currentRide.partners || []) {
+    let effectiveKm = 0;
+
     if (
-      !partner.start ||
-      !partner.start.coords ||
-      typeof partner.start.coords.lat !== 'number' ||
-      typeof partner.start.coords.lng !== 'number' ||
-      !partner.destination ||
-      !partner.destination.coords ||
-      typeof partner.destination.coords.lat !== 'number' ||
-      typeof partner.destination.coords.lng !== 'number'
+      partner.start &&
+      partner.start.coords &&
+      typeof partner.start.coords.lat === 'number' &&
+      typeof partner.start.coords.lng === 'number' &&
+      partner.destination &&
+      partner.destination.coords &&
+      typeof partner.destination.coords.lat === 'number' &&
+      typeof partner.destination.coords.lng === 'number'
     ) {
-      continue;
+      const start = { latitude: partner.start.coords.lat, longitude: partner.start.coords.lng };
+      const end = { latitude: partner.destination.coords.lat, longitude: partner.destination.coords.lng };
+
+      // Project partner's start/end onto the ride route
+      const startProj = projectPointToRoute(start, routeCoords, 2);
+      const endProj = projectPointToRoute(end, routeCoords, 2);
+
+      // Clamp to ride bounds (0 to totalDistanceKm)
+      const clampedStartPos = Math.min(Math.max(startProj.posKm, 0), totalDistanceKm);
+      const clampedEndPos = Math.min(Math.max(endProj.posKm, 0), totalDistanceKm);
+      
+      // Calculate distance traveled ON the ride route
+      effectiveKm = Math.max(0, clampedEndPos - clampedStartPos);
     }
-    
-    const start = { latitude: partner.start.coords.lat, longitude: partner.start.coords.lng };
-    const end = { latitude: partner.destination.coords.lat, longitude: partner.destination.coords.lng };
-
-    // Project partner's start/end onto the ride route
-    const startProj = projectPointToRoute(start, routeCoords, 2);
-    const endProj = projectPointToRoute(end, routeCoords, 2);
-
-    // Clamp to ride bounds (0 to totalDistanceKm)
-    const clampedStartPos = Math.min(Math.max(startProj.posKm, 0), totalDistanceKm);
-    const clampedEndPos = Math.min(Math.max(endProj.posKm, 0), totalDistanceKm);
-    
-    // Calculate distance traveled ON the ride route
-    const effectiveKm = Math.max(0, clampedEndPos - clampedStartPos);
 
     participants.push({
       name: partner.name,
@@ -204,12 +217,7 @@ export function calculateFareBreakdown(currentRide, method = 'distance') {
     // Calculate total route distance for summary
     const rideStart = currentRide.start.coords;
     const rideEnd = currentRide.destination.coords;
-    const routeCoords = currentRide.routePolyline
-      ? polyline.decode(currentRide.routePolyline).map(([lat, lng]) => ({ latitude: lat, longitude: lng }))
-      : [
-          { latitude: rideStart.lat, longitude: rideStart.lng },
-          { latitude: rideEnd.lat, longitude: rideEnd.lng },
-        ];
+    const routeCoords = getParsedRouteCoords(currentRide.routePolyline, rideStart, rideEnd);
     
     for (let i = 0; i < routeCoords.length - 1; i++) {
       totalDistanceKm += haversineKm(routeCoords[i], routeCoords[i + 1]);

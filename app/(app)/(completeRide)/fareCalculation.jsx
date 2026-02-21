@@ -210,7 +210,7 @@ export default function FareCalculation() {
             <View key={`${p.name || ''}-${p.handle || ''}-${i}`} style={styles.breakdownRow}>
               <View style={styles.personInfo}>
                 <Text style={styles.personName}>{p.name}</Text>
-                <Text style={styles.personHandle}>@{p.handle}</Text>
+                <Text style={styles.personHandle}>{p.handle}</Text>
               </View>
               
               {calculationMethod === 'distance' && (
