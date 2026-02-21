@@ -48,11 +48,11 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
         const contentType = res.headers.get('content-type');
         if (res.ok && contentType && contentType.includes('application/json')) {
           const data = await res.json();
-          // Fallback: use ride.partners if backend returns empty array
+          // Filter out removed passengers
           if (Array.isArray(data.passengers) && data.passengers.length > 0) {
-            setPassengers(data.passengers);
+            setPassengers(data.passengers.filter(p => p.status !== 'removed'));
           } else if (Array.isArray(ride.partners) && ride.partners.length > 0) {
-            setPassengers(ride.partners);
+            setPassengers(ride.partners.filter(p => p.status !== 'removed'));
           } else {
             setPassengers([]);
           }
@@ -60,7 +60,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
           const text = await res.text();
           console.error('Failed to fetch ride details, non-JSON response:', text);
           if (Array.isArray(ride.partners) && ride.partners.length > 0) {
-            setPassengers(ride.partners);
+            setPassengers(ride.partners.filter(p => p.status !== 'removed'));
           } else {
             setPassengers([]);
           }
@@ -69,7 +69,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
         console.error('Failed to fetch ride details:', err);
         // Fallback: use ride.partners if fetch fails
         if (Array.isArray(ride.partners) && ride.partners.length > 0) {
-          setPassengers(ride.partners);
+          setPassengers(ride.partners.filter(p => p.status !== 'removed'));
         } else {
           setPassengers([]);
         }
@@ -178,22 +178,38 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
 
   return (
     <Card>
-      {/* Start Ride and Complete Ride buttons for own created rides */}
-      {isOwnRide && rideStatus === 'unactive' && (
-        <Button
-          title="Start ride"
-          style={{ marginBottom: 16, backgroundColor: '#000' }}
-          textStyle={{ color: '#fff', fontWeight: 'bold' }}
-          onPress={async () => {
-            try {
-              const updated = await updateRideStatus(ride.id, 'started');
-              selectRide(updated || ride);
-              Alert.alert('Success', 'Ride has started!');
-            } catch (e) {
-              Alert.alert('Error', 'Failed to start ride');
-            }
-          }}
-        />
+      {/* Start/Cancel buttons for own created rides, only if not ongoing */}
+      {isOwnRide && rideStatus === 'unactive' && rideStatus !== 'ongoing' && (
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
+          <Button
+            title="Start Ride"
+            style={{ flex: 1, marginRight: 8, backgroundColor: '#000' }}
+            textStyle={{ color: '#fff', fontWeight: 'bold' }}
+            onPress={async () => {
+              try {
+                const updated = await updateRideStatus(ride.id, 'started');
+                selectRide(updated || ride);
+                Alert.alert('Success', 'Ride has started!');
+              } catch (e) {
+                Alert.alert('Error', 'Failed to start ride');
+              }
+            }}
+          />
+          <Button
+            title="Cancel Ride"
+            style={{ flex: 1, marginLeft: 8, backgroundColor: '#e63e4c' }}
+            textStyle={{ color: '#fff', fontWeight: 'bold' }}
+            onPress={async () => {
+              try {
+                const updated = await updateRideStatus(ride.id, 'cancelled');
+                selectRide(updated || ride);
+                Alert.alert('Success', 'Ride has been cancelled!');
+              } catch (e) {
+                Alert.alert('Error', 'Failed to cancel ride');
+              }
+            }}
+          />
+        </View>
       )}
       {isOwnRide && rideStatus === 'started' && (
         <Button
@@ -323,6 +339,23 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
                       <Text style={styles.handle}>@{partner.username || partner.handle}</Text>
                     </View>
                   </TouchableOpacity>
+                  {/* Show minus sign only for own rides */}
+                  {isOwnRide && (
+                    <TouchableOpacity
+                      style={{ marginLeft: 8 }}
+                      onPress={() => {
+                        router.push({
+                          pathname: '/RemovePassengerScreen',
+                          params: {
+                            passenger: partner,
+                            rideId: ride.id || ride.ride_id
+                          }
+                        });
+                      }}
+                    >
+                      <Entypo name="minus" size={24} color="#e63e4c" />
+                    </TouchableOpacity>
+                  )}
                 </View>
               );
             })

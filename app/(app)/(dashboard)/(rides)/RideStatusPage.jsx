@@ -17,7 +17,7 @@ export default function RideStatusPage() {
     (ride) => ride.status === 'unactive' && String(ride.creator_id ?? ride.creator?.user_id ?? ride.creator?.id) === String(userId)
   );
   const pastRides = rides.filter((ride) => ['completed', 'cancelled', 'expired'].includes(ride.status));
-  const favouriteRides = rides.filter((ride) => ride.isFavourite);
+  // Removed favourites logic
 
   const navigateToRides = (rides, title) => {
     try {
@@ -41,7 +41,7 @@ export default function RideStatusPage() {
   const filteredPast = (myRides || []).filter(
     (ride) => ['completed', 'cancelled', 'expired'].includes(String(ride.status ?? ride.currentStatus ?? ride.current_status ?? '').toLowerCase())
   );
-  const filteredFavourites = (myRides || []).filter((ride) => ride.isFavourite);
+  // Removed favourites logic
 
   return (
     <View style={styles.container}>
@@ -54,9 +54,7 @@ export default function RideStatusPage() {
       <TouchableOpacity style={styles.box} onPress={() => navigateToRides(filteredPast, 'Past Rides')}>
         <Text style={styles.boxText}>Past Rides</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.box} onPress={() => navigateToRides(filteredFavourites, 'Favourites')}>
-        <Text style={styles.boxText}>Favourites</Text>
-      </TouchableOpacity>
+      {/* Removed Favourites button */}
       <TouchableOpacity style={styles.box} onPress={() => router.push('/(dashboard)/(rides)/JoinRequestsList')}>
         <Text style={styles.boxText}>Join Requests</Text>
       </TouchableOpacity>

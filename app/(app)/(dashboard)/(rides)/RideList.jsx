@@ -1,13 +1,15 @@
 import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { StyledText as Text } from '../../../../components/StyledText';
 import { StyledScrollView as ScrollView } from '../../../../components/StyledScrollView';
 import RideCard from '../../../../components/RideDisplayCard';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useRide } from '../../../../context/RideContext';
+import { FontAwesome } from '@expo/vector-icons';
 
 
 export default function RideList() {
+  // Removed filter state
   const router = useRouter();
   const { rides: ridesParam, title } = useLocalSearchParams();
   const { selectRide, updateRideStatus } = useRide();
@@ -21,6 +23,9 @@ export default function RideList() {
   });
   const displayTitle = useMemo(() => title || 'Rides', [title]);
 
+  // No filter logic, just use localRides
+  const filteredRides = localRides;
+
   // Handler to sync localRides after status change from RideDetailsCard
   const handleStatusChange = (rideId, newStatus) => {
     setLocalRides((prev) => prev.filter((r) => String(r.id) !== String(rideId)));
@@ -28,15 +33,17 @@ export default function RideList() {
 
   return (
     <View style={{flex: 1}}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16 }}>
+        <Text style={styles.title}>{displayTitle}</Text>
+      </View>
       <ScrollView
         style={{flex: 1}}
         contentContainerStyle={[styles.scrollContent, {minHeight: '100%', paddingBottom: 148}]}
         showsVerticalScrollIndicator={true}
       >
-        <Text style={styles.title}>{displayTitle}</Text>
-        {localRides.length === 0 && <Text style={styles.empty}>No rides found.</Text>}
-        {localRides.map((ride, idx) => {
-          // Show Start Ride or Complete Ride button for own rides
+        {filteredRides.length === 0 && <Text style={styles.empty}>No rides found.</Text>}
+        {filteredRides.map((ride, idx) => {
+          // ...existing code...
           const creatorId = ride?.creator_id ?? ride?.creator?.user_id ?? ride?.creator?.id;
           const currentUserId = (typeof window !== 'undefined' && window.currentUserId) || undefined;
           const isOwnRide = creatorId && currentUserId && String(creatorId) === String(currentUserId);
@@ -93,6 +100,42 @@ export default function RideList() {
 }
 
 const styles = StyleSheet.create({
+  filterBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginHorizontal: 4,
+    borderRadius: 8,
+    backgroundColor: '#e0e0e0',
+  },
+  filterActive: {
+    backgroundColor: '#b0b0b0',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    minWidth: 320,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  closeBtn: {
+    marginTop: 16,
+    backgroundColor: '#000',
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f7f7f7',
