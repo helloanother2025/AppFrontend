@@ -146,8 +146,8 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
         >
           <Text style={{ fontSize: 30 }}>👤 </Text>
           <View>
-            <Text style={{ fontWeight: 'semibold', fontSize: 16 }}>{ride.creator.name}</Text>
-            <Text style={styles.handle}>{ride.creator.handle}</Text>
+            <Text style={{ fontWeight: 'semibold', fontSize: 16 }}>{ride.creator.name || 'Unknown'}</Text>
+            <Text style={styles.handle}>{ride.creator.handle || '@user'}</Text>
           </View>
         </TouchableOpacity>
       )}
@@ -204,7 +204,7 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
 
           <View style={{ width: '33%', alignItems: 'center' }}>
             <Text style={{ fontSize: 12 }}>Total fare</Text>
-            {ride.fare === 'TBA' ? (
+            {ride.fare === 'TBA' || ride.fare === 0 || ride.fare === '0' || ride.fare === '0.00' ? (
               <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>TBA</Text>
             ) : (
               <Text style={[styles.rideText, { fontWeight: 'semibold' }]}>BDT {ride.fare}</Text>

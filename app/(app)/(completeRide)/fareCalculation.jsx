@@ -10,6 +10,8 @@ import { useRouter } from 'expo-router';
 import { normalizeRide } from '../../../src/utils/rideMapper';
 import { useRide } from '../../../context/RideContext';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import Octicons from '@expo/vector-icons/Octicons';
+import Entypo from '@expo/vector-icons/Entypo';
 
 export default function FareCalculation() {
   const { selectedRide, myRides, joinedRides, rides: availableRides, completeRide, loading, getRideDetails } = useRide();
@@ -122,16 +124,38 @@ export default function FareCalculation() {
             </View>
             <Text style={styles.participantRole}>Creator</Text>
           </View>
+          <View style={styles.participantLocations}>
+            <View style={styles.locationRow}>
+              <Octicons name="dot-fill" size={14} color="#e63e4c" style={styles.locationIcon} />
+              <Text style={styles.locationText} numberOfLines={1}>{currentRide.start.name}</Text>
+            </View>
+            <View style={styles.locationRow}>
+              <Entypo name="location-pin" size={14} color="#e63e4c" style={styles.locationIcon} />
+              <Text style={styles.locationText} numberOfLines={1}>{currentRide.destination.name}</Text>
+            </View>
+          </View>
           {(currentRide.partners || []).map((partner, index) => (
-            <View key={index} style={styles.participantRow}>
-              <View style={styles.creatorRow}>
-                <Text style={{ fontSize: 30 }}>👤 </Text>
-                <View>
-                  <Text style={{ fontWeight: 'semibold', fontSize: 16 }}>{partner.name}</Text>
-                  <Text style={styles.handle}>{partner.handle}</Text>
+            <View key={index}>
+              <View style={styles.participantRow}>
+                <View style={styles.creatorRow}>
+                  <Text style={{ fontSize: 30 }}>👤 </Text>
+                  <View>
+                    <Text style={{ fontWeight: 'semibold', fontSize: 16 }}>{partner.name}</Text>
+                    <Text style={styles.handle}>{partner.handle}</Text>
+                  </View>
+                </View>
+                <Text style={styles.participantRole}>Buddy</Text>
+              </View>
+              <View style={styles.participantLocations}>
+                <View style={styles.locationRow}>
+                  <Octicons name="dot-fill" size={14} color="#e63e4c" style={styles.locationIcon} />
+                  <Text style={styles.locationText} numberOfLines={1}>{partner.start?.name || 'Pickup'}</Text>
+                </View>
+                <View style={styles.locationRow}>
+                  <Entypo name="location-pin" size={14} color="#e63e4c" style={styles.locationIcon} />
+                  <Text style={styles.locationText} numberOfLines={1}>{partner.destination?.name || 'Drop-off'}</Text>
                 </View>
               </View>
-              <Text style={styles.participantRole}>Buddy</Text>
             </View>
           ))}
         </View>
@@ -140,27 +164,7 @@ export default function FareCalculation() {
       {/* Calculation Method Toggle */}
       <View style={styles.methodContainer}>
         <Text style={styles.methodLabel}>Fare calculation:</Text>
-        <View style={styles.methodToggle}>
-          <TouchableOpacity
-            style={[
-              styles.methodOption,
-              calculationMethod === 'equal' && styles.methodOptionActive
-            ]}
-            onPress={() => setCalculationMethod('equal')}
-          >
-            <FontAwesome 
-              name="users" 
-              size={14} 
-              color={calculationMethod === 'equal' ? '#fff' : '#666'} 
-            />
-            <Text style={[
-              styles.methodOptionText,
-              calculationMethod === 'equal' && styles.methodOptionTextActive
-            ]}>
-              Equal Split
-            </Text>
-          </TouchableOpacity>
-          
+        <View style={styles.methodToggle}> 
           <TouchableOpacity
             style={[
               styles.methodOption,
@@ -178,6 +182,25 @@ export default function FareCalculation() {
               calculationMethod === 'distance' && styles.methodOptionTextActive
             ]}>
               Distance-Based
+            </Text>
+          </TouchableOpacity>          
+          <TouchableOpacity
+            style={[
+              styles.methodOption,
+              calculationMethod === 'equal' && styles.methodOptionActive
+            ]}
+            onPress={() => setCalculationMethod('equal')}
+          >
+            <FontAwesome 
+              name="users" 
+              size={14} 
+              color={calculationMethod === 'equal' ? '#fff' : '#666'} 
+            />
+            <Text style={[
+              styles.methodOptionText,
+              calculationMethod === 'equal' && styles.methodOptionTextActive
+            ]}>
+              Equal Split
             </Text>
           </TouchableOpacity>
         </View>
@@ -199,9 +222,26 @@ export default function FareCalculation() {
           {/* Column Headers */}
           {calculationMethod === 'distance' && (
             <View style={[styles.fareRow, styles.headerRow]}>
-              <Text style={styles.headerText}>Person</Text>
-              <Text style={styles.headerText}>Distance</Text>
-              <Text style={styles.headerText}>Share</Text>
+              <View style={styles.personInfo}>
+                <Text style={styles.headerText}>Person</Text>
+              </View>
+              <View style={styles.distanceInfo}>
+                <Text style={styles.headerText}>Distance</Text>
+              </View>
+              <View style={styles.fareInfo}>
+                <Text style={styles.headerText}>Share</Text>
+              </View>
+            </View>
+          )}
+
+          {calculationMethod === 'equal' && (
+            <View style={[styles.fareRow, styles.headerRow]}>
+              <View style={styles.personInfo}>
+                <Text style={styles.headerText}>Person</Text>
+              </View>
+              <View style={styles.fareInfo}>
+                <Text style={styles.headerText}>Share</Text>
+              </View>
             </View>
           )}
 
@@ -231,11 +271,6 @@ export default function FareCalculation() {
             <Text style={styles.summaryText}>
               {fareBreakdown.length} {fareBreakdown.length === 1 ? 'participant' : 'participants'}
             </Text>
-            {calculationMethod === 'distance' && (
-              <Text style={styles.summaryText}>
-                Total: {fareBreakdown.reduce((sum, p) => sum + parseFloat(p.fare), 0).toFixed(2)} BDT
-              </Text>
-            )}
           </View>
         </View>
       </CardButton>
@@ -262,6 +297,24 @@ const styles = StyleSheet.create({
     marginTop: 5,
     marginBottom: 8,
   },
+  participantLocations: {
+    marginBottom: 12,
+    marginTop: -4,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 2,
+  },
+  locationIcon: {
+    marginRight: 8,
+    width: 14,
+  },
+  locationText: {
+    fontSize: 12,
+    color: '#555',
+    flex: 1,
+  },
   participantRole: { 
     fontSize: 12, 
     color: '#000',
@@ -280,6 +333,7 @@ const styles = StyleSheet.create({
   methodContainer: {
     marginTop: 16,
     marginBottom: 8,
+    width: '100%',
   },
   methodLabel: {
     fontSize: 16,
@@ -348,8 +402,6 @@ const styles = StyleSheet.create({
   headerRow: {
     marginBottom: 8,
     paddingBottom: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   headerText: {
     fontSize: 12,
@@ -362,8 +414,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
   },
   personInfo: {
     flex: 2,
@@ -393,6 +445,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#1f1f1f',
+    textAlign: 'right'
   },
   summaryRow: {
     flexDirection: 'row',

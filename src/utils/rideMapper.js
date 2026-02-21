@@ -59,26 +59,26 @@ export const normalizeRide = (ride) => {
         ...ride.destination,
         coords: destCoords,
       },
-          creator: {
-            ...ride.creator,
-            user_id: ride.creator.user_id ?? ride.creator.id ?? ride.creator.userId,
-            name: ride.creator.name ?? ride.creator_name ?? 'Unknown', // Added ride.creator_name
-            handle: ensureHandle(ride.creator.handle ?? ride.creator.username ?? ride.creator_username, ride.creator.username ?? ride.creator_username), // Added ride.creator_username
-          },      date: startTimeValue ? formatRideDate(startTimeValue) : (ride.date ?? formatRideDate(ride.start_time ?? ride.startTime)),
+      creator: {
+        ...ride.creator,
+        user_id: ride.creator.user_id ?? ride.creator.id ?? ride.creator.userId,
+        name: ride.creator.name ?? ride.creator_name ?? ride.creatorName ?? 'Unknown',
+        handle: ensureHandle(ride.creator.handle ?? ride.creator.username ?? ride.creator_username ?? ride.creatorHandle, ride.creator.username ?? ride.creator_username ?? ride.creatorHandle),
+      },      date: startTimeValue ? formatRideDate(startTimeValue) : (ride.date ?? formatRideDate(ride.start_time ?? ride.startTime)),
       routePolyline: ride.routePolyline ?? ride.route_polyline ?? ride.routePolyline,
       createdAt: ride.createdAt ?? ride.created_at ?? ride.createdAtUtc ?? ride.created_at_utc,
       transportMode: ride.transport_mode ?? ride.transportMode ?? ride.transport,
       rideProvider: ride.ride_provider ?? ride.rideProvider,
       gender: ride.gender ?? ride.gender_preference ?? ride.genderPreference ?? 'Any',
       preferences: ride.preferences ?? ride.preference_notes ?? ride.notes ?? '',
-      fare: ride.fare ?? ride.actual_fare ?? ride.actualFare ?? 'TBA',
+      fare: ride.fare != null && ride.fare !== '0' && ride.fare !== '0.00' && ride.fare !== 0 ? ride.fare : 'TBA',
       fareStatus:
         completionTimeValue
           ? 'complete'
           : String(statusValue ?? '').toLowerCase() === 'completed'
           ? 'pending'
           : null,
-      totalPassengers: ride.totalPassengers ?? ride.available_seats ?? ride.availableSeats ?? ride.seats ?? 0,
+      totalPassengers: ride.totalPassengers ?? ride.available_seats ?? ride.availableSeats ?? ride.seats ?? (ride.partners?.length || 1),
       partners: (() => {
         // Prefer partners if already normalized with coords
         if (Array.isArray(ride.partners) && ride.partners.length > 0 && ride.partners[0].start && ride.partners[0].destination) {
@@ -147,9 +147,9 @@ export const normalizeRide = (ride) => {
       coords: destCoords,
     },
     creator: {
-      name: ride.name ?? ride.creator_name ?? ride.creatorName ?? 'Unknown',
-      user_id: ride.creator_id ?? ride.creatorId ?? ride.user_id ?? ride.userId,
-      handle: ensureHandle(ride.username ?? ride.creator_username ?? ride.creatorHandle, ride.username ?? ride.creator_username),
+      name: ride.name ?? ride.creator_name ?? ride.creatorName ?? ride.creator?.name ?? 'Unknown',
+      user_id: ride.creator_id ?? ride.creatorId ?? ride.user_id ?? ride.userId ?? ride.creator?.user_id,
+      handle: ensureHandle(ride.username ?? ride.creator_username ?? ride.creatorHandle ?? ride.creator?.handle ?? ride.creator?.username, ride.username ?? ride.creator_username ?? ride.creatorHandle),
     },
     partners: Array.isArray(ride.passengers)
       ? ride.passengers.map((p) => ({
@@ -171,8 +171,8 @@ export const normalizeRide = (ride) => {
         }))
       : [],
     date: dateParts,
-    fare: ride.fare ?? ride.actual_fare ?? ride.actualFare ?? 'TBA',
-    totalPassengers: ride.available_seats ?? ride.availableSeats ?? ride.totalPassengers ?? 0,
+    fare: ride.fare != null && ride.fare !== '0' && ride.fare !== '0.00' && ride.fare !== 0 ? ride.fare : 'TBA',
+    totalPassengers: ride.available_seats ?? ride.availableSeats ?? ride.totalPassengers ?? (Array.isArray(ride.passengers) ? ride.passengers.length : 1),
     transportMode: ride.transport_mode ?? ride.transportMode ?? ride.transport ?? '',
     rideProvider: ride.ride_provider ?? ride.rideProvider ?? '',
     preferences: ride.preference_notes ?? ride.notes ?? '',

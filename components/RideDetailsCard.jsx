@@ -98,6 +98,8 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
   }, [ride?.id, join]);
 
   const creator = ride.creator || { name: 'Unknown', handle: '@user' };
+  const creatorName = creator.name || 'Unknown';
+  const creatorHandle = creator.handle || '@user';
   const maxPassengers = Number(ride.totalPassengers ?? 0);
   const totalPassengers = Number(ride.totalPassengers ?? ride.available_seats ?? 0);
   const availableSeats = typeof ride.available_seats === 'number' ? ride.available_seats : (totalPassengers - passengers.length);
@@ -131,15 +133,19 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
     setRequesting(true);
     try {
       // Normalize coordinates to ensure they have both lat/lng and latitude/longitude
-      const normalizeCoords = (coords) => {
-        if (!coords) return null;
-        const lat = coords.lat ?? coords.latitude;
-        const lng = coords.lng ?? coords.longitude;
-        return (lat !== undefined && lng !== undefined) ? { lat, lng } : null;
+      const getCoords = (loc) => {
+        if (!loc) return null;
+        if (loc.coords) return { lat: loc.coords.lat ?? loc.coords.latitude, lng: loc.coords.lng ?? loc.coords.longitude };
+        if (loc.geometry?.location) return { lat: loc.geometry.location.lat, lng: loc.geometry.location.lng };
+        // Handle direct lat/lng if present
+        const lat = loc.lat ?? loc.latitude;
+        const lng = loc.lng ?? loc.longitude;
+        if (lat !== undefined && lng !== undefined) return { lat, lng };
+        return null;
       };
 
-      const startCoords = normalizeCoords(searchData.start?.coords);
-      const destCoords = normalizeCoords(searchData.destination?.coords);
+      const startCoords = getCoords(searchData.start);
+      const destCoords = getCoords(searchData.destination);
 
       const response = await joinRequestsAPI.submitJoinRequest(
         ride.id,
@@ -257,8 +263,8 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
         >
           <Text style={{ fontSize: 30 }}>👤 </Text>
           <View>
-            <Text style={styles.creatorName}>{creator.name}</Text>
-            <Text style={styles.handle}>{creator.handle}</Text>
+            <Text style={styles.creatorName}>{creatorName}</Text>
+            <Text style={styles.handle}>{creatorHandle}</Text>
           </View>
         </TouchableOpacity>
 
@@ -273,7 +279,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
                   params: { 
                     userId: String(uid),
                     userName: creator.name,
-                    userHandle: creator.handle || creator.username
+                    userHandle: creatorHandle || creator.username
                   } 
                 });
               }}
@@ -375,7 +381,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
           <Text style={styles.transportText}>{ride.transportMode === 'Car' && ride.rideProvider ? `Car (${ride.rideProvider})` : ride.transportMode}</Text>
         </View>
         <View style={styles.rideColumn}>
-          <Text>BDT {ride.fare}</Text>
+          <Text>{ride.fare === 'TBA' || ride.fare === 0 || ride.fare === '0' || ride.fare === '0.00' ? 'TBA' : `BDT ${ride.fare}`}</Text>
         </View>
       </View>
 

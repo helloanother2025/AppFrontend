@@ -35,12 +35,14 @@ export default function CreateRide() {
             setRideData({
               creator: {
                 name: currentUser?.name || '',
-                handle: currentUser?.username ? `@${currentUser.username}` : '',
+                handle: currentUser?.username ? `@${currentUser.username}` : (currentUser?.handle || ''),
               },
               start: { name: '', coords: null },
               destination: { name: '', coords: null },
-              transport: '',
+              transportMode: '',
+              rideProvider: '',
               date: {day: '', time: ''},
+              fullDate: null,
               totalPassengers: 0,
               fare: '',
               partners: [],
@@ -60,8 +62,12 @@ export default function CreateRide() {
             onPress={() => {
               setRideData({
                 ...ride,
-                date: {day: '', time: ''},
-                status: 'unactive', // Set status to unactive for renewed ride
+                date: { day: '', time: '' },
+                fullDate: null,
+                status: 'unactive',
+                // Ensure critical fields are explicitly present
+                transportMode: ride.transportMode || ride.transport_mode || 'Car',
+                totalPassengers: ride.totalPassengers || ride.available_seats || 1,
               });
           
               router.push('/(createRide)/resetDate');
