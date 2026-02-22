@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { StyledText as Text } from '../../../../components/StyledText';
+import { StyledTitle as Title } from '../../../../components/StyledTitle';
 import { StyledScrollView as ScrollView } from '../../../../components/StyledScrollView';
 import { joinRequestsAPI } from '../../../../src/api/joinRequests';
 import RideDisplayCard from '../../../../components/RideDisplayCard';
@@ -71,8 +72,8 @@ export default function JoinRequestsList() {
   };
 
   return (
-    <ScrollView style={{flex: 1}} contentContainerStyle={styles.scrollContent}>
-      <Text style={styles.title}>Requests Pending Approval</Text>
+    <ScrollView>
+      <Title>Pending requests</Title>
       {pending.length === 0 && <Text style={styles.empty}>No pending requests.</Text>}
       {requests.length > 0 && requests.some(r => !r.start_name || !r.dest_name || !r.creator_id) && (
         <Text style={{color: 'orange', marginBottom: 8}}>
@@ -85,7 +86,7 @@ export default function JoinRequestsList() {
         </View>
       ))}
 
-      <Text style={[styles.title, {marginTop: 24}]}>Rides I Have Joined</Text>
+      <Title style={{marginTop: 14}}>Rides joined</Title>
       {joined.length === 0 && <Text style={styles.empty}>No joined rides.</Text>}
       {joined.map((req, idx) => (
         <View key={req.request_id || idx} style={styles.cardWrapper}>
@@ -97,17 +98,6 @@ export default function JoinRequestsList() {
 }
 
 const styles = StyleSheet.create({
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 148,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    marginLeft: 4,
-  },
   empty: {
     fontSize: 16,
     color: '#888',
@@ -115,7 +105,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   cardWrapper: {
-    marginBottom: 14,
+    marginBottom: 2,
+    width: '100%',
   },
   rideText: {
     fontSize: 14,

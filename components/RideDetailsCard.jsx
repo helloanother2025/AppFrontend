@@ -242,12 +242,14 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
             onPress={handleRequest}
             disabled={isRequested || requesting || isFull || isGenderRestricted}
           />
-          <View style={{ marginBottom: 10 }}>
-            <Text style={[styles.rideText, { fontWeight: 'bold' }]}>Available seats: {availableSeats}</Text>
-          </View>
         </>
       )}
   
+      {/* Available seats */}
+      <View style={styles.rideRow}>
+        <Ionicons name="person" size={14} color="#888" style={[styles.icon, { marginHorizontal: 2 }]}/>
+        <Text style={[styles.rideText, { fontWeight: 'bold' }]}>Available seats: {availableSeats}</Text>
+      </View>
 
       {/* Start location */}
       <View style={styles.rideRow}>

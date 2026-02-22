@@ -258,16 +258,16 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
 
       {/* Show Start and Cancel buttons for created rides (unactive status) */}
       {showStartButton && (
-        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 16, marginBottom: 4 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 4, width: '100%'}}>
           <Button
-            title="Start Ride"
-            style={{ width: 140, height: 48, marginRight: 8, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}
+            title="Start ride"
+            style={{ width: '62%', marginRight: 14, backgroundColor: '#000'}}
             textStyle={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}
             onPress={handleStartRide}
           />
           <Button
-            title="Cancel Ride"
-            style={{ width: 140, height: 48, marginLeft: 8, backgroundColor: '#e63e4c', alignItems: 'center', justifyContent: 'center' }}
+            title="Cancel"
+            style={{backgroundColor: '#e63e4c'}}
             textStyle={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}
             onPress={async () => {
               try {
@@ -284,16 +284,16 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
 
       {/* Show Complete Ride and Cancel Ride buttons side by side for ongoing rides */}
       {showCompleteButton && (
-        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 16, marginBottom: 4 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 4, width: '100%' }}>
           <Button
-            title="Complete Ride"
-            style={{ width: 140, height: 48, marginRight: 8, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}
+            title="Complete ride"
+            style={{ width: '60%', marginRight: 14, backgroundColor: '#000'}}
             textStyle={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}
             onPress={handleComplete}
           />
           <Button
-            title="Cancel Ride"
-            style={{ width: 140, height: 48, marginLeft: 8, backgroundColor: '#e63e4c', alignItems: 'center', justifyContent: 'center' }}
+            title="Cancel"
+            style={{backgroundColor: '#e63e4c'}}
             textStyle={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}
             onPress={async () => {
               try {

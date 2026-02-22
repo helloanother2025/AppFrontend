@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { StyledText as Text } from '../../../../components/StyledText';
+import { StyledScrollView as ScrollView } from '../../../../components/StyledScrollView';
 import { useRide } from '../../../../context/RideContext';
 import { useRouter } from 'expo-router';
 import { useUser } from '../../../../context/UserContext';
@@ -44,21 +45,20 @@ export default function RideStatusPage() {
   // Removed favourites logic
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity style={styles.box} onPress={() => navigateToRides(filteredOngoing, 'Ongoing Rides')}>
-        <Text style={styles.boxText}>Ongoing Rides</Text>
+    <ScrollView style={styles.container}>
+      <TouchableOpacity style={styles.box} onPress={() => navigateToRides(filteredOngoing, 'Ongoing rides')}>
+        <Text style={styles.boxText}>Ongoing rides</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.box} onPress={() => navigateToRides(filteredCreated, 'Created Rides')}>
-        <Text style={styles.boxText}>Created Rides</Text>
+      <TouchableOpacity style={styles.box} onPress={() => navigateToRides(filteredCreated, 'Created rides')}>
+        <Text style={styles.boxText}>Created rides</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.box} onPress={() => navigateToRides(filteredPast, 'Past Rides')}>
-        <Text style={styles.boxText}>Past Rides</Text>
+      <TouchableOpacity style={styles.box} onPress={() => navigateToRides(filteredPast, 'Past rides')}>
+        <Text style={styles.boxText}>Past rides</Text>
       </TouchableOpacity>
-      {/* Removed Favourites button */}
       <TouchableOpacity style={styles.box} onPress={() => router.push('/(dashboard)/(rides)/JoinRequestsList')}>
-        <Text style={styles.boxText}>Join Requests</Text>
+        <Text style={styles.boxText}>Join requests</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -74,6 +74,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 15,
     alignItems: 'center',
+    width: '100%',
   },
   boxText: {
     fontSize: 18,

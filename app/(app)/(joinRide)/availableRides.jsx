@@ -31,12 +31,14 @@ const AvailableRides = () => {
   const [selectedTimeFilter, setSelectedTimeFilter] = useState('All'); // 'All', 'Leave now', 'Schedule'
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const RADIUS_KM = 10; // Default search radius for backend
+  const RADIUS_KM = 5; // Default search radius for backend
 
   const handleTimeFilterChange = (filter) => {
     setSelectedTimeFilter(filter);
     if (filter === 'All') {
       setDate(null);
+      resetSearchData(); // Clear location search data
+      setShowSearch(true);
     } else if (filter === 'Leave now') {
       setDate(null);
     } else if (filter === 'Schedule') {
@@ -124,8 +126,6 @@ const AvailableRides = () => {
     setSelectedTransport(null);
     setSelectedGender(null);
     setDate(null);
-    setSelectedTimeFilter('All'); // Reset to 'All'
-    resetSearchData(); // Clear location search data
   }, [resetSearchData]);
 
   return (
@@ -177,11 +177,11 @@ const AvailableRides = () => {
           <TouchableOpacity 
             style={styles.dateButton}
             onPress={() => setShowDatePicker(true)}>
-            <FontAwesome name="calendar" size={14} color="#e63e4c" />
+            <FontAwesome name="calendar" size={14} color="#fff" />
             <Text style={styles.dateButtonText}>
               {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, {date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
             </Text>
-            <FontAwesome name="chevron-right" size={12} color="#e63e4c" />
+            <FontAwesome name="chevron-right" size={12} color="#fff" />
           </TouchableOpacity>
         )}
 
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
   scheduleContainer: {
     flexDirection: 'row',
     backgroundColor: '#e6e6e6',
-    borderRadius: 14,
+    borderRadius: 12,
     marginBottom: 10,
   },
   scheduleOption: {
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scheduleOptionActive: {
-    backgroundColor: '#e63e4c',
+    backgroundColor: '#1f1f1f',
   },
   scheduleOptionText: {
     fontSize: 14,
@@ -382,9 +382,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignContent: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#888',
     borderWidth: 1,
-    borderColor: '#e63e4c',
+    borderColor: '#888',
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 8,
     fontSize: 14,
-    color: '#000',
+    color: '#fff',
   },
   buttonRow: {
     flexDirection: 'row',

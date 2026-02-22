@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { StyledText as Text } from '../../../../components/StyledText';
+import { StyledTitle as Title } from '../../../../components/StyledTitle';
 import { StyledScrollView as ScrollView } from '../../../../components/StyledScrollView';
 import RideCard from '../../../../components/RideDisplayCard';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -32,15 +33,9 @@ export default function RideList() {
   };
 
   return (
-    <View style={{flex: 1}}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16 }}>
-        <Text style={styles.title}>{displayTitle}</Text>
-      </View>
-      <ScrollView
-        style={{flex: 1}}
-        contentContainerStyle={[styles.scrollContent, {minHeight: '100%', paddingBottom: 148}]}
-        showsVerticalScrollIndicator={true}
-      >
+      <ScrollView>
+        <Title>{displayTitle}</Title>
+
         {filteredRides.length === 0 && <Text style={styles.empty}>No rides found.</Text>}
         {filteredRides.map((ride, idx) => {
           // ...existing code...
@@ -95,7 +90,6 @@ export default function RideList() {
           );
         })}
       </ScrollView>
-    </View>
   );
 }
 
@@ -161,6 +155,6 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     width: '100%',
-    marginBottom: 14,
+    marginBottom: 2,
   },
 });

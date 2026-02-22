@@ -72,7 +72,7 @@ const RouteMap = ({ ride, userStartCoords, userDestCoords, small = true, style, 
     const allCoords = [...routeCoords, ...userRouteCoords];
     if (allCoords.length > 0 && mapRef.current) {
       mapRef.current.fitToCoordinates(allCoords, {
-        edgePadding: { top: small ? 340 : 180, right: 200, bottom: small ? 300 : 260, left: 200 },
+        edgePadding: { top: small ? 340 : 100, right: 50, bottom: small ? 300 : 340, left: 50 },
         animated: true,
       });
     }

@@ -4,11 +4,11 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, useAnimatedProps } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const SPRING_CONFIG = { damping: 20, stiffness: 200 };
+const SPRING_CONFIG = { damping: 30, stiffness: 150 };
 
 export default function BottomSheet({
   initialPosition = 'collapsed', // 'collapsed' | 'expanded'
-  topSnap = 0.2, // as fraction of screen height
+  topSnap = 0.1, // as fraction of screen height
   bottomSnap = 0.6, // as fraction of screen height
   children,
   contentPaddingBottomExtra = 0,
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 18,
-    paddingBottom: 50,
+    paddingBottom: 150,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.1,

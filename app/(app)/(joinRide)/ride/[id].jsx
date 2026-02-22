@@ -1,12 +1,15 @@
 import { StyleSheet, TouchableOpacity } from 'react-native'
 import { StyledText as Text } from '../../../../components/StyledText'
 import { StyledScrollView as ScrollView } from '../../../../components/StyledScrollView'
+import { StyledNavigatorButton as NavButton } from '../../../../components/StyledNavigatorButton'
 import RideDetailsCard from '../../../../components/RideDetailsCard'
 import RouteMap from '../../../../components/RouteMap'
+import BottomSheet from '../../../../components/BottomSheet';
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useSearch } from '../../../../context/SearchContext';
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import React, { useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useRide } from '../../../../context/RideContext';
 
 const RideDetails = () => {
@@ -45,16 +48,16 @@ const RideDetails = () => {
   const userDestCoords = searchData.destination?.coords;
 
   return (
-    <ScrollView>
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <FontAwesome style={{marginRight: 10}} name="chevron-left" size={14} color="black" />
-        <Text style={{fontSize: 16, fontWeight: 'semibold'}}>Back</Text>
-      </TouchableOpacity>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <NavButton style={styles.backButton} onPress={() => router.back()} />
 
-      <RouteMap ride={ride} userStartCoords={userStartCoords} userDestCoords={userDestCoords} />
 
-      <RideDetailsCard ride={ride} join={true}></RideDetailsCard>
-    </ScrollView>
+      <RouteMap ride={ride} userStartCoords={userStartCoords} userDestCoords={userDestCoords} small={false} />
+
+      <BottomSheet initialPosition="collapsed">
+        <RideDetailsCard ride={ride} join={true}/>
+      </BottomSheet>
+    </GestureHandlerRootView>
   );
 };
 
@@ -62,7 +65,10 @@ export default RideDetails;
 
 const styles = StyleSheet.create({
   backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    zIndex: 1,
+    backgroundColor: '#fff'
   }
 });
