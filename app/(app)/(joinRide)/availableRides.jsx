@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, Switch } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { StyledFauxSearch as Search } from '../../../components/StyledFauxSearch';
 import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView';
 import { StyledTitle as Title } from '../../../components/StyledTitle';
@@ -14,13 +14,13 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { useSearch } from '../../../context/SearchContext';
 import { useRide } from '../../../context/RideContext';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 
 
 const AvailableRides = () => {
   const router = useRouter();
   const { searchData, resetSearchData } = useSearch();
-  const { rides, fetchAvailableRides, loading } = useRide(); // Use useRide hook
+  const { rides, fetchAvailableRides, loading } = useRide();
   const scrollRef = useRef(null);
 
   const [showSearch, setShowSearch] = useState(true);
@@ -107,7 +107,21 @@ const AvailableRides = () => {
     if (scrollRef.current) {
         setTimeout(() => scrollRef.current.scrollToEnd({ animated: true }), 150);
     }
-  }, [selectedTransport, selectedGender, date, selectedTimeFilter, searchData, handleSearch]); // Depend on handleSearch, which now encapsulates all filter states
+  }, [selectedTransport, selectedGender, date, selectedTimeFilter, searchData, handleSearch]);
+
+  // Clear search context and local filter state whenever user leaves this screen
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        resetSearchData();
+        setShowSearch(true);
+        setSelectedTransport(null);
+        setSelectedGender(null);
+        setDate(null);
+        setSelectedTimeFilter('All');
+      };
+    }, [resetSearchData])
+  );
 
   const onDateChange = (selectedDate) => {
     setDate(selectedDate || date);
@@ -294,7 +308,12 @@ const AvailableRides = () => {
 
       <Title style={{marginTop: 10}}>Available rides</Title>
 
-      {rides.length > 0 ? (
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#1f1f1f" />
+          <Text style={styles.loadingText}>Finding rides…</Text>
+        </View>
+      ) : rides.length > 0 ? (
         rides.map((ride, index) => (
           <RideCard
             key={index}
@@ -320,6 +339,16 @@ export default AvailableRides;
 
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  loadingText: {
+    color: '#888',
+    fontSize: 14,
+  },
   button: {
     marginVertical: 10,
     padding: 20,
@@ -367,7 +396,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scheduleOptionActive: {
-    backgroundColor: '#1f1f1f',
+    backgroundColor: '#e63e4c',
   },
   scheduleOptionText: {
     fontSize: 14,

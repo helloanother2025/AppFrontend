@@ -120,8 +120,8 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
   const currentUserId = currentUser?.user_id ?? currentUser?.id;
   const isOwnRide = creatorId && currentUserId && String(creatorId) === String(currentUserId);
   
-  const showStartButton = isOwnRide && rideStatus === 'unactive' && !isRideCompleted && !isRideCancelled && !isRideExpired;
-  const showCompleteButton = isOwnRide && rideStatus === 'started' && !isRideCompleted && !isRideCancelled && !isRideExpired;
+  const showStartButton = !create && isOwnRide && rideStatus === 'unactive' && !isRideCompleted && !isRideCancelled && !isRideExpired;
+  const showCompleteButton = !create&& isOwnRide && rideStatus === 'started' && !isRideCompleted && !isRideCancelled && !isRideExpired;
 
   return (
     <CardButton onPress={onPress} disabled={onPress ? false : true}>

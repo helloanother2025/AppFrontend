@@ -44,8 +44,16 @@ const RideDetails = () => {
     );
   }
 
-  const userStartCoords = searchData.start?.coords;
-  const userDestCoords = searchData.destination?.coords;
+  // Extract coords: { geometry: { location: { lat, lng } } }
+  const extractCoords = (loc) => {
+    if (!loc) return null;
+    if (loc.geometry?.location) return { lat: loc.geometry.location.lat, lng: loc.geometry.location.lng };
+    if (loc.coords) return { lat: loc.coords.lat ?? loc.coords.latitude, lng: loc.coords.lng ?? loc.coords.longitude };
+    if (loc.lat !== undefined) return { lat: loc.lat, lng: loc.lng };
+    return null;
+  };
+  const userStartCoords = extractCoords(searchData.start);
+  const userDestCoords = extractCoords(searchData.destination);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

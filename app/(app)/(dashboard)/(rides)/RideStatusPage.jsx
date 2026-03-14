@@ -20,9 +20,9 @@ export default function RideStatusPage() {
   const pastRides = rides.filter((ride) => ['completed', 'cancelled', 'expired'].includes(ride.status));
   // Removed favourites logic
 
-  const navigateToRides = (rides, title) => {
+  const navigateToRides = (filter, title) => {
     try {
-      router.push({ pathname: '/(dashboard)/(rides)/RideList', params: { rides: JSON.stringify(rides), title } });
+      router.push({ pathname: '/(dashboard)/(rides)/RideList', params: { filter, title } });
     } catch (e) {
       router.back();
     }
@@ -46,13 +46,13 @@ export default function RideStatusPage() {
 
   return (
     <ScrollView style={styles.container}>
-      <TouchableOpacity style={styles.box} onPress={() => navigateToRides(filteredOngoing, 'Ongoing rides')}>
+      <TouchableOpacity style={styles.box} onPress={() => navigateToRides('ongoing', 'Ongoing rides')}>
         <Text style={styles.boxText}>Ongoing rides</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.box} onPress={() => navigateToRides(filteredCreated, 'Created rides')}>
+      <TouchableOpacity style={styles.box} onPress={() => navigateToRides('created', 'Created rides')}>
         <Text style={styles.boxText}>Created rides</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.box} onPress={() => navigateToRides(filteredPast, 'Past rides')}>
+      <TouchableOpacity style={styles.box} onPress={() => navigateToRides('past', 'Past rides')}>
         <Text style={styles.boxText}>Past rides</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.box} onPress={() => router.push('/(dashboard)/(rides)/JoinRequestsList')}>

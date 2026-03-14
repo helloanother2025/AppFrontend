@@ -5,7 +5,7 @@ import MapView, { Marker, Polyline } from 'react-native-maps';
 import { getDirections, decodePolyline } from '../src/utils/mapServices';
 
 
-const RouteMap = ({ ride, userStartCoords, userDestCoords, small = true, style, rideColor = '#1f1f1f', userColor = '#e63e4c' }) => {
+const RouteMap = ({ ride, userStartCoords, userDestCoords, small = true, style, rideColor = '#1f1f1f', userColor = '#888888' }) => {
   const mapRef = useRef(null);
   const [routeCoords, setRouteCoords] = useState([]);
   const [userRouteCoords, setUserRouteCoords] = useState([]);
@@ -84,16 +84,16 @@ const RouteMap = ({ ride, userStartCoords, userDestCoords, small = true, style, 
         ref={mapRef} 
         style={styles.map}
       >
+        {userStart && <CustomMarker coordinate={userStart} title="Your pickup" color="#888" iconName="circle" size={18}/>}
+        {userDest && <CustomMarker coordinate={userDest} title="Your drop-off" color="#888" iconName="circle"  size={18}/>}
+        {userRouteCoords.length > 0 && (
+          <Polyline coordinates={userRouteCoords} strokeWidth={4} strokeColor={userColor}/>
+        )}
+
         {startCoords && <Marker coordinate={startCoords} title="Start" pinColor="orange"/>}
         {destCoords && <Marker coordinate={destCoords} title="Destination" pinColor="#e63e4c"/>}
         {routeCoords.length > 0 && (
           <Polyline coordinates={routeCoords} strokeWidth={6} strokeColor={rideColor} />
-        )}
-        
-        {userStart && <CustomMarker coordinate={userStart} title="Your pickup" color="#888" iconName="circle" size={18}/>}
-        {userDest && <CustomMarker coordinate={userDest} title="Your drop-off" color="#888" iconName="circle"  size={18}/>}
-        {userRouteCoords.length > 0 && (
-          <Polyline coordinates={userRouteCoords} strokeWidth={3} strokeColor={userColor}/>
         )}
       </MapView>
     </View>
