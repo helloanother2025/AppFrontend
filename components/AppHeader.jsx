@@ -54,7 +54,7 @@ const DashboardHeader = () => {
       </Text>
 
       <View style={styles.rightActions}>
-        <TouchableOpacity style={styles.button} onPress={() => router.push('/(chat)')}>
+        {/*<TouchableOpacity style={styles.button} onPress={() => router.push('/(chat)')}>
           <View style={styles.iconWrapper}>
             <Ionicons name="chatbubble-ellipses" size={24} color={isDark ? '#fff' : '#ababab'} />
             {unreadCount > 0 && (
@@ -65,7 +65,7 @@ const DashboardHeader = () => {
               </View>
             )}
           </View>
-        </TouchableOpacity>
+        </TouchableOpacity>*/}
         <TouchableOpacity style={styles.button} onPress={() => setShowSettings(!showSettings)}>
           <Ionicons name="settings-sharp" size={24} color={isDark ? '#fff' : '#ababab'} />
         </TouchableOpacity>
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingTop: 50,
     paddingBottom: 10,
   },
