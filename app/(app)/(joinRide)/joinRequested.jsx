@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import { useHideTabBar } from '../../../hooks/useHideTabBar';
 import { StyledText as Text } from '../../../components/StyledText';
 import { StyledTitle as Title } from '../../../components/StyledTitle';
 import { StyledButton } from '../../../components/StyledButton';
@@ -6,6 +7,7 @@ import { StyledScrollView as ScrollView } from '../../../components/StyledScroll
 import { useRouter } from 'expo-router';
 
 const JoinRequested = () => {
+    useHideTabBar();
     const router = useRouter();
 
     return (

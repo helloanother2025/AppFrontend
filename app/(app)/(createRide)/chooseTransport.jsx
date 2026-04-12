@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useHideTabBar } from '../../../hooks/useHideTabBar';
 import { View, StyleSheet, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView';
 import { StyledText as Text } from '../../../components/StyledText';
@@ -11,6 +12,7 @@ import { useRide } from '../../../context/RideContext';
 import Entypo from '@expo/vector-icons/Entypo';
 
 export default function ChooseTransport() {
+  useHideTabBar();
   const router = useRouter();
   const { rideData, setRideData } = useRide();
   const scrollViewRef = useRef(null);

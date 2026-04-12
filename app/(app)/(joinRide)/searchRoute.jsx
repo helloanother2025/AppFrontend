@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { useHideTabBar } from '../../../hooks/useHideTabBar';
 import DualMapSearchWrapper from '../../../components/DualMapSearchWrapper';
 import { StyledNavigatorButton as NavButton } from '../../../components/StyledNavigatorButton';
 import { useRouter } from 'expo-router';
@@ -7,6 +8,7 @@ import { useSearch } from '../../../context/SearchContext';
 import { getDirections } from '../../../src/utils/mapServices';
 
 export default function SearchRoute() {
+  useHideTabBar();
   const router = useRouter();
   const { searchData, setSearchData } = useSearch();
 

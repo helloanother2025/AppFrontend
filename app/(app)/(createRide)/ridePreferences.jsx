@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { useHideTabBar } from '../../../hooks/useHideTabBar';
 import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView';
 import { useRouter } from 'expo-router';
 import { StyledText as Text } from '../../../components/StyledText';
@@ -12,6 +13,7 @@ import { useRide } from '../../../context/RideContext';
 
 
 export default function RidePreferences() {
+  useHideTabBar();
   const router = useRouter();
   const { rideData, setRideData } = useRide();
   const scrollViewRef = useRef(null);

@@ -216,12 +216,11 @@ const Notifications = () => {
                 ? handleRideCompleted
                 : (isJoinRequest || isFriendRequest) && (notification.related_user_handle || notification.user_username || notification.user_handle || notification.related_user_id)
                 ? () => {
-                    // Prefer handle if available, else fallback to user id
                     const handle = notification.related_user_handle || notification.user_username || notification.user_handle;
                     if (handle) {
-                      router.push(`/(dashboard)/(rides)/user/${handle.replace(/^@/, '')}`);
+                      router.push(`/user/${handle.replace(/^@/, '')}`);
                     } else if (notification.related_user_id) {
-                      router.push(`/(dashboard)/(rides)/user/${notification.related_user_id}`);
+                      router.push(`/user/${notification.related_user_id}`);
                     }
                   }
                 : undefined

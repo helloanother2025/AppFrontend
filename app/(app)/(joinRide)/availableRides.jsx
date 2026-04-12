@@ -243,7 +243,7 @@ const AvailableRides = () => {
         onCancel={handleDatePickerCancel}
       />
 
-      {/* ── Filter modal ── */}
+      {/* Filter modal */}
       <Modal
         visible={showFilters}
         transparent

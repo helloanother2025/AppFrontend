@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
 import { View, StyleSheet } from 'react-native'
+import { useShowTabBar } from '../../../hooks/useHideTabBar'
 import { StyledFauxSearch as Search} from '../../../components/StyledFauxSearch' 
 import { StyledTitle as Title } from '../../../components/StyledTitle'
 import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView'
@@ -14,6 +15,7 @@ import { useRide } from '../../../context/RideContext';
 import { useUser } from '../../../context/UserContext';
 
 export default function CreateRide() {
+  useShowTabBar();
   const router = useRouter();
   const { setRideData, myRides, fetchMyRides } = useRide();
   const { currentUser } = useUser();

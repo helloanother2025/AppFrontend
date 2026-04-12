@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
 
-export default function RidesLayout() {
+export default function CompleteRideLayout() {
   return <Stack screenOptions={{ headerShown: false }} />;
 }

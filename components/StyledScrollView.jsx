@@ -30,10 +30,10 @@ const styles = StyleSheet.create({
     padding: 25,
     paddingTop: 10,
     paddingBottom: 60,
-    marginBottom: 90,
+    marginBottom: 0,
   },
   contentContainer: {
     alignItems: 'flex-start',
-    paddingBottom: 60,
+    paddingBottom: 120,
   },
 });

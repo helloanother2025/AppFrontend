@@ -1,4 +1,5 @@
 import { StyleSheet, TouchableOpacity } from 'react-native'
+import { useHideTabBar } from '../../../../hooks/useHideTabBar'
 import { StyledText as Text } from '../../../../components/StyledText'
 import { StyledScrollView as ScrollView } from '../../../../components/StyledScrollView'
 import { StyledNavigatorButton as NavButton } from '../../../../components/StyledNavigatorButton'
@@ -13,6 +14,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useRide } from '../../../../context/RideContext';
 
 const RideDetails = () => {
+  useHideTabBar();
   const { id } = useLocalSearchParams();
   const { searchData } = useSearch();
   const { rides, getRideDetails } = useRide();

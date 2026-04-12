@@ -1,4 +1,5 @@
 import { View, StyleSheet, TouchableOpacity } from 'react-native'
+import { useHideTabBar } from '../../../../hooks/useHideTabBar'
 import { StyledText as Text } from '../../../../components/StyledText'
 import { StyledScrollView as ScrollView } from '../../../../components/StyledScrollView'
 import { StyledCard as Card} from '../../../../components/StyledCard'
@@ -13,6 +14,7 @@ import { usersAPI } from '../../../../src/api/users'
 import SendFriendRequestButton from '../../../../components/SendFriendRequestButton';
 
 const UserDetails = () => {
+  useHideTabBar();
   const { handle } = useLocalSearchParams();
   const { rides: availableRides } = useRide();
   const { fetchUserProfile } = useUser();

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { View, StyleSheet } from 'react-native'
+import { useHideTabBar } from '../../../hooks/useHideTabBar'
 import { StyledNavigatorButton as NavButton } from '../../../components/StyledNavigatorButton'
 import DualMapSearchWrapper from '../../../components/DualMapSearchWrapper'
 import { useRouter } from 'expo-router'
@@ -7,6 +8,7 @@ import { useRide } from '../../../context/RideContext'
 import { getDirections } from '../../../src/utils/mapServices'
 
 export default function ChooseRoute() {
+  useHideTabBar()
   const router = useRouter()
   const [selectedStart, setSelectedStart] = useState(null)
   const [selectedDestination, setSelectedDestination] = useState(null)
@@ -91,7 +93,7 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     position: 'absolute',
-    top: 570,
+    top: 600,
     left: 20,
     right: 20,
     zIndex: 1,

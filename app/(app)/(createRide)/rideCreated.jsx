@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, BackHandler } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useShowTabBar } from '../../../hooks/useHideTabBar';
 import { StyledText as Text } from '../../../components/StyledText';
 import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView'; 
 import { StyledTitle as Title } from '../../../components/StyledTitle'; 
@@ -10,6 +11,7 @@ import RouteMap from '../../../components/RouteMap';
 
 
 export default function RideCreated() {
+  useShowTabBar();
   const { rideData, createRide, resetRideData } = useRide();
   const router = useRouter();
   const [createdRide, setCreatedRide] = useState(null);
@@ -99,7 +101,7 @@ export default function RideCreated() {
     <ScrollView>
       <Title>Your ride is created!</Title>
 
-      <RouteMap ride={createdRide || rideData} />
+      <RouteMap ride={createdRide || rideData} small={true}/>
 
       <RideCard create={true} ride={createdRide || rideData} />
 

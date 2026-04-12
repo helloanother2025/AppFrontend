@@ -77,7 +77,7 @@ const Dash = () => {
           ongoing={true}
           onPress={() => {
             selectRide(activeRide);
-            router.push(`/${activeRide.id}`);
+            router.push(`/ride/${activeRide.id}`);
           }}
         />
       ) : (

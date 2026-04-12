@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { useHideTabBar } from '../../../hooks/useHideTabBar';
 import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView';
 import { StyledText as Text } from '../../../components/StyledText';
 import { StyledTitle as Title } from '../../../components/StyledTitle';
@@ -12,6 +13,7 @@ import RideCard from '../../../components/RideDisplayCard';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function TimeDetails() {
+  useHideTabBar();
   const router = useRouter();
   const { rideData, setRideData } = useRide();
   const [selection, setSelection] = useState('now');
