@@ -48,8 +48,13 @@ const RideDetails = () => {
     ride.creator &&
     String(ride.creator.user_id) === String(currentUser.user_id);
 
+  // Only rides with status 'unactive' (scheduled, not yet started) can be edited
+  const rideStatus = String(ride?.status ?? ride?.currentStatus ?? ride?.current_status ?? '').toLowerCase();
+  const isEditable = isCreator && rideStatus === 'unactive';
+  const isDeletable = isCreator && ['completed', 'cancelled', 'expired'].includes(rideStatus);
+
   const handleEdit = () => {
-    router.push(`/(createRide)/editRide?id=${rideId}`);
+    router.push(`/(dashboard)/(rides)/editRide?id=${rideId}`);
   };
 
   const handleDelete = () => {
@@ -100,14 +105,18 @@ const RideDetails = () => {
         })()}
       />
 
-      {isCreator && (
+      {isCreator && (isEditable || isDeletable) && (
         <View style={styles.buttonContainer}>
-          <View style={{flex: 1}}>
-            <StyledButton onPress={handleEdit} title="Edit "></StyledButton>
-          </View>
-          <View style={{flex: 1}}>
-            <StyledButton style={{backgroundColor: '#FF7272'}} onPress={handleDelete} title="Delete"></StyledButton>
-          </View>
+          {isEditable && (
+            <View style={{flex: 1}}>
+              <StyledButton onPress={handleEdit} title="Edit"></StyledButton>
+            </View>
+          )}
+          {isDeletable && (
+            <View style={{flex: 1}}>
+              <StyledButton style={{backgroundColor: '#FF7272'}} onPress={handleDelete} title="Delete"></StyledButton>
+            </View>
+          )}
         </View>
       )}
     </ScrollView>
