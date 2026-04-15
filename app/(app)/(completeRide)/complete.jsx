@@ -2,7 +2,7 @@ import React from 'react';
 import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView'
 import { StyledTitle as Title } from '../../../components/StyledTitle' 
 import { StyledText as Text } from '../../../components/StyledText'
-import { StyledButton as Button } from '../../../components/StyledButton'; 
+import { StyledNavigatorButton as Button } from '../../../components/StyledNavigatorButton';
 import RouteMap from '../../../components/RouteMap'
 import RideCard from '../../../components/RideDisplayCard'
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -33,10 +33,11 @@ export default function FareCalculation() {
           <RideCard ride={currentRide} />
           <Button
             title='Next'
+            back={false}
             onPress={() =>
               router.push('/fareCalculation')
             }
-            style={{width: '100%'}}>
+            style={{ width: '30%', alignSelf: 'flex-end', marginTop: 15, marginBottom: 15}}>
           </Button>
         </>
       ) : (

@@ -54,8 +54,10 @@ const RouteMap = ({ ride, userStartCoords, userDestCoords, small = true, style, 
   useEffect(() => {
     if (userStart && userDest) {
       fetchDirections(userStart, userDest, setUserRouteCoords);
+    } else {
+      setUserRouteCoords([]);
     }
-  }, [userStart, userDest]);
+  }, [userStart?.latitude, userStart?.longitude, userDest?.latitude, userDest?.longitude]);
 
   const fetchDirections = async (start, destination, setCoords) => {
     try {
@@ -72,7 +74,7 @@ const RouteMap = ({ ride, userStartCoords, userDestCoords, small = true, style, 
     const allCoords = [...routeCoords, ...userRouteCoords];
     if (allCoords.length > 0 && mapRef.current) {
       mapRef.current.fitToCoordinates(allCoords, {
-        edgePadding: { top: small ? 340 : 100, right: 50, bottom: small ? 300 : 340, left: 50 },
+        edgePadding: { top: small ? 340 : 100, right: small ? 200 : 50, bottom: small ? 300 : 340, left: small ? 200 : 50 },
         animated: true,
       });
     }
@@ -84,16 +86,16 @@ const RouteMap = ({ ride, userStartCoords, userDestCoords, small = true, style, 
         ref={mapRef} 
         style={styles.map}
       >
-        {userStart && <CustomMarker coordinate={userStart} title="Your pickup" color="#888" iconName="circle" size={18}/>}
-        {userDest && <CustomMarker coordinate={userDest} title="Your drop-off" color="#888" iconName="circle"  size={18}/>}
-        {userRouteCoords.length > 0 && (
-          <Polyline coordinates={userRouteCoords} strokeWidth={4} strokeColor={userColor}/>
-        )}
-
         {startCoords && <Marker coordinate={startCoords} title="Start" pinColor="orange"/>}
         {destCoords && <Marker coordinate={destCoords} title="Destination" pinColor="#e63e4c"/>}
         {routeCoords.length > 0 && (
           <Polyline coordinates={routeCoords} strokeWidth={6} strokeColor={rideColor} />
+        )}
+
+        {userStart && <CustomMarker coordinate={userStart} title="Your pickup" color="#888" iconName="circle" size={18}/>}
+        {userDest && <CustomMarker coordinate={userDest} title="Your drop-off" color="#888" iconName="circle"  size={18}/>}
+        {userRouteCoords.length > 0 && (
+          <Polyline coordinates={userRouteCoords} strokeWidth={3.5} strokeColor={userColor}/>
         )}
       </MapView>
     </View>

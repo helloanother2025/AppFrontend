@@ -9,6 +9,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useUser } from '../../../../context/UserContext';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { joinRequestsAPI } from '../../../../src/api/joinRequests';
+import StyledSlidingPill from '../../../../components/StyledSlidingPill';
 
 const TABS = [
   { key: 'ongoing', label: 'Ongoing' },
@@ -189,22 +190,12 @@ export default function RideStatusPage() {
       <Title>Your rides</Title>
 
       {/* Tab pills */}
-      <View style={styles.pillsRow}>
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.key;
-          return (
-            <TouchableOpacity
-              key={tab.key}
-              style={[styles.pill, isActive && styles.pillActive]}
-              onPress={() => setActiveTab(tab.key)}
-            >
-              <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      <StyledSlidingPill
+        options={TABS}
+        activeOption={activeTab}
+        onOptionSelect={setActiveTab}
+        containerStyle={{ marginTop: 8, marginBottom: 16 }}
+      />
 
       {/* Content */}
       {activeTab === 'requests' ? renderRequestsContent() : renderRidesContent()}
@@ -213,33 +204,6 @@ export default function RideStatusPage() {
 }
 
 const styles = StyleSheet.create({
-  pillsRow: {
-    flexDirection: 'row',
-    backgroundColor: '#ebebeb',
-    borderRadius: 14,
-    marginTop: 8,
-    marginBottom: 16,
-    gap: 2,
-  },
-  pill: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 6,
-    borderRadius: 14,
-  },
-  pillActive: {
-    backgroundColor: '#1f1f1f',
-  },
-  pillText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#555',
-  },
-  pillTextActive: {
-    color: '#fff',
-  },
   cardWrapper: {
     width: '100%',
     marginBottom: 4,

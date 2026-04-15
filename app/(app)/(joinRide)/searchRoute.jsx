@@ -53,8 +53,8 @@ export default function SearchRoute() {
     <View style={{ flex: 1 }}>
       <DualMapSearchWrapper
         allowBoth={true}
-        startValue={start?.name} // Pass only the name for display
-        destinationValue={dest?.name} // Pass only the name for display
+        startQuery={start?.name} // Pass only the name for display
+        destinationQuery={dest?.name} // Pass only the name for display
         onStartSelected={setStart}
         onDestinationSelected={setDest}
       />
@@ -70,7 +70,7 @@ export default function SearchRoute() {
 const styles = StyleSheet.create({
   row: {
     position: 'absolute',
-    top: 570,
+    top: 600,
     left: 20,
     right: 20,
     zIndex: 1,

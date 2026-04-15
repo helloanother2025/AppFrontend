@@ -68,7 +68,7 @@ const UserRides = () => {
             ongoing={true}
             onPress={() => {
               selectRide(ride);
-              router.push(`/${ride.id}`);
+              router.push(`/ride/${ride.id}`);
             }}
           />
           {/* List Passengers */}
@@ -104,7 +104,7 @@ const UserRides = () => {
       {previousRides.map((ride) => (
         <React.Fragment key={ride.id}>
           <View style={{ position: 'relative', width: '100%' }}>
-            <RideCard ride={ride} onPress={() => router.push(`/${ride.id}`)} />
+            <RideCard ride={ride} onPress={() => router.push(`/ride/${ride.id}`)} />
             {String(ride.creator?.user_id ?? ride.creator_id ?? '') === String(currentUser?.user_id ?? '') && (
               <TouchableOpacity
                 style={{ position: 'absolute', top: 8, right: 8, padding: 6 }}

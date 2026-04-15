@@ -5,13 +5,14 @@ import { StyledScrollView as ScrollView } from '../../../components/StyledScroll
 import { StyledText as Text } from '../../../components/StyledText';
 import { StyledTitle as Title } from '../../../components/StyledTitle';
 import { StyledCardButton as CardButton } from '../../../components/StyledCardButton';
-import { StyledButton as Button } from '../../../components/StyledButton';
+import { StyledNavigatorButton as Button } from '../../../components/StyledNavigatorButton';
 import { useRouter } from 'expo-router';
 import { normalizeRide } from '../../../src/utils/rideMapper';
 import { useRide } from '../../../context/RideContext';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Octicons from '@expo/vector-icons/Octicons';
 import Entypo from '@expo/vector-icons/Entypo';
+import StyledSlidingPill from '../../../components/StyledSlidingPill';
 
 export default function FareCalculation() {
   const { selectedRide, myRides, joinedRides, rides: availableRides, completeRide, loading, getRideDetails } = useRide();
@@ -44,7 +45,6 @@ export default function FareCalculation() {
       currentRide.id &&
       currentRide.start?.coords &&
       currentRide.destination?.coords &&
-      currentRide.fare &&
       currentRide.partners
     ) {
       try {
@@ -98,7 +98,7 @@ export default function FareCalculation() {
   };
 
   // Show error if ride data is missing
-  if (!currentRide || !currentRide.creator || !currentRide.fare || !currentRide.start || !currentRide.destination) {
+  if (!currentRide || !currentRide.creator || !currentRide.start || !currentRide.destination) {
     return (
       <ScrollView>
         <Title>Ride participants</Title>
@@ -164,46 +164,15 @@ export default function FareCalculation() {
       {/* Calculation Method Toggle */}
       <View style={styles.methodContainer}>
         <Text style={styles.methodLabel}>Fare calculation:</Text>
-        <View style={styles.methodToggle}> 
-          <TouchableOpacity
-            style={[
-              styles.methodOption,
-              calculationMethod === 'distance' && styles.methodOptionActive
-            ]}
-            onPress={() => setCalculationMethod('distance')}
-          >
-            <FontAwesome 
-              name="road" 
-              size={14} 
-              color={calculationMethod === 'distance' ? '#fff' : '#666'} 
-            />
-            <Text style={[
-              styles.methodOptionText,
-              calculationMethod === 'distance' && styles.methodOptionTextActive
-            ]}>
-              Distance-Based
-            </Text>
-          </TouchableOpacity>          
-          <TouchableOpacity
-            style={[
-              styles.methodOption,
-              calculationMethod === 'equal' && styles.methodOptionActive
-            ]}
-            onPress={() => setCalculationMethod('equal')}
-          >
-            <FontAwesome 
-              name="users" 
-              size={14} 
-              color={calculationMethod === 'equal' ? '#fff' : '#666'} 
-            />
-            <Text style={[
-              styles.methodOptionText,
-              calculationMethod === 'equal' && styles.methodOptionTextActive
-            ]}>
-              Equal Split
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <StyledSlidingPill
+          options={[
+            { key: 'distance', label: 'Distance-Based', icon: <FontAwesome name="road" size={14} /> },
+            { key: 'equal', label: 'Equal Split', icon: <FontAwesome name="users" size={14} /> }
+          ]}
+          activeOption={calculationMethod}
+          onOptionSelect={setCalculationMethod}
+          containerStyle={{ marginBottom: 8 }}
+        />
         <Text style={styles.methodDescription}>
           {getMethodDescription(calculationMethod)}
         </Text>
@@ -278,8 +247,9 @@ export default function FareCalculation() {
       <Button
         title={completing ? 'Completing...' : 'Finish'}
         onPress={handleCompleteRide}
+        back={false}
         disabled={completing || loading}
-        style={{marginTop: 20, width: '100%'}}
+        style={{marginTop: 15, width: '30%', alignSelf: 'flex-end'}}
       />
     </ScrollView>
   );
@@ -340,35 +310,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
     color: '#333',
-  },
-  methodToggle: {
-    flexDirection: 'row',
-    backgroundColor: '#e6e6e6',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 8,
-  },
-  methodOption: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    gap: 6,
-  },
-  methodOptionActive: {
-    backgroundColor: '#1f1f1f',
-  },
-  methodOptionText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#666',
-  },
-  methodOptionTextActive: {
-    color: '#fff',
-    fontWeight: '600',
   },
   methodDescription: {
     fontSize: 12,

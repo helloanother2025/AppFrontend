@@ -13,6 +13,7 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { useSearch } from '../../../context/SearchContext';
 import { useRide } from '../../../context/RideContext';
 import { useRouter, useFocusEffect } from 'expo-router';
+import StyledSlidingPill from '../../../components/StyledSlidingPill';
 
 const TRANSPORT_OPTIONS = [
   { key: 'Car', label: 'Car', icon: <FontAwesome name="car" size={15} /> },
@@ -51,8 +52,6 @@ const AvailableRides = () => {
     setSelectedTimeFilter(filter);
     if (filter === 'All') {
       setDate(null);
-      resetSearchData();
-      setShowSearch(true);
     } else if (filter === 'Schedule' && !date) {
       setShowDatePicker(true);
     } else if (filter === 'Leave now') {
@@ -105,18 +104,17 @@ const AvailableRides = () => {
     }
   }, [selectedTransport, selectedGender, date, selectedTimeFilter, searchData, handleSearch]);
 
-  // Clear everything when leaving the screen
+  // Reset only filter/time UI state when leaving the screen.
+  // Do NOT reset searchData here — [id].jsx reads it when navigating to a ride.
   useFocusEffect(
     useCallback(() => {
       return () => {
-        resetSearchData();
-        setShowSearch(true);
         setSelectedTransport(null);
         setSelectedGender(null);
         setDate(null);
         setSelectedTimeFilter('All');
       };
-    }, [resetSearchData])
+    }, [])
   );
 
   const onDateChange = (selectedDate) => {
@@ -196,19 +194,12 @@ const AvailableRides = () => {
 
       {/* Time + filter controls */}
       <View style={styles.controlsRow}>
-        <View style={[styles.scheduleContainer, { flex: 1 }]}>
-          {['All', 'Leave now', 'Schedule'].map((f) => (
-            <TouchableOpacity
-              key={f}
-              style={[styles.scheduleOption, selectedTimeFilter === f && styles.scheduleOptionActive]}
-              onPress={() => handleTimeFilterChange(f)}
-            >
-              <Text style={[styles.scheduleOptionText, selectedTimeFilter === f && styles.scheduleOptionTextActive]}>
-                {f}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <StyledSlidingPill
+          options={['All', 'Leave now', 'Schedule']}
+          activeOption={selectedTimeFilter}
+          onOptionSelect={handleTimeFilterChange}
+          containerStyle={{ flex: 1 }}
+        />
 
         <TouchableOpacity
           style={[styles.filterToggle, activeFilterCount > 0 && styles.filterToggleActive]}
@@ -405,30 +396,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginBottom: 16,
-  },
-  scheduleContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#e6e6e6',
-    borderRadius: 12,
-  },
-  scheduleOption: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scheduleOptionActive: {
-    backgroundColor: '#1f1f1f',
-  },
-  scheduleOptionText: {
-    fontSize: 13,
-    color: '#000',
-  },
-  scheduleOptionTextActive: {
-    color: '#fff',
-    fontWeight: '600',
   },
   dateButton: {
     flexDirection: 'row',
