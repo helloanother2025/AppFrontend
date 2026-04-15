@@ -10,14 +10,15 @@ export const FriendsProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
 
   const fetchFriends = useCallback(async () => {
-    if (currentUser?.id) {
+    const userId = currentUser?.id || currentUser?.user_id;
+    if (userId) {
       setLoading(true);
       try {
-        const res = await friendsAPI.getFriends(currentUser.id);
+        const friends = await friendsAPI.getFriends(userId);
         // Map backend user_id to id and username to handle for FriendsBox
-        const mapped = (res.data || []).map(f => ({
+        const mapped = (Array.isArray(friends) ? friends : []).map(f => ({
           ...f,
-          id: f.user_id,
+          id: f.user_id || f.id,
           handle: f.username ? `@${f.username}` : '',
         }));
         setFriends(mapped);
@@ -27,7 +28,7 @@ export const FriendsProvider = ({ children }) => {
         setLoading(false);
       }
     }
-  }, [currentUser?.id]);
+  }, [currentUser?.id, currentUser?.user_id]);
 
   useEffect(() => {
     fetchFriends();

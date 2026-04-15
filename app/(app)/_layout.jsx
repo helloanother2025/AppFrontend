@@ -83,6 +83,7 @@ export default function TabsLayout() {
 
                   {/* Hidden flow screens (no tab bar) */}
                   <Tabs.Screen name="(dashboard)/(rides)/[id]" options={HIDDEN_FLOW} />
+                  <Tabs.Screen name="(dashboard)/user/[handle]" options={HIDDEN_FLOW} />
                   <Tabs.Screen name="(dashboard)/[id]" options={HIDDEN_FLOW} />
                   <Tabs.Screen name="(createRide)" options={VISIBLE_FLOW} />
                   <Tabs.Screen name="(joinRide)" options={VISIBLE_FLOW} />

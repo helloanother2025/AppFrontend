@@ -204,11 +204,23 @@ const Notifications = () => {
     if (processing[notification.notification_id]) return;
     setProcessing(prev => ({ ...prev, [notification.notification_id]: true }));
     try {
-      const requestId = notification.related_request_id;
-      if (notification.type === 'friend_request' && requestId) {
-        await friendsAPI.acceptFriendRequest(requestId);
-        await fetchFriends();
-        Alert.alert('Success', 'Friend request accepted!');
+      let requestId = notification.related_request_id;
+
+      if (notification.type === 'friend_request') {
+        // Fallback for old notifications where related_request_id was stored as null
+        if (!requestId) {
+          const received = await friendsAPI.getReceivedRequests();
+          const senderId = notification.related_user_id;
+          const match = received.find(r => String(r.user_id) === String(senderId));
+          requestId = match?.request_id;
+        }
+        if (requestId) {
+          await friendsAPI.acceptFriendRequest(requestId);
+          await fetchFriends();
+          Alert.alert('Success', 'Friend request accepted!');
+        } else {
+          Alert.alert('Error', 'Could not find the friend request.');
+        }
       } else if (notification.type === 'join_request' && requestId) {
         await joinRequestsAPI.acceptJoinRequest(requestId);
         if (notification.related_ride_id && updateRidePassengers) {
@@ -311,20 +323,38 @@ const Notifications = () => {
         return (
           <CardButton
             key={notifId}
-            onPress={
-              isRideCompleted
-                ? handleRideCompleted
-                : (isJoinRequest || isFriendRequest) && (notification.related_user_handle || notification.user_username || notification.user_handle || notification.related_user_id)
-                ? () => {
-                    const handle = notification.related_user_handle || notification.user_username || notification.user_handle;
-                    if (handle) {
-                      router.push(`/user/${handle.replace(/^@/, '')}`);
-                    } else if (notification.related_user_id) {
-                      router.push(`/user/${notification.related_user_id}`);
-                    }
-                  }
-                : undefined
-            }
+            onPress={() => {
+              // 1. ride_completed with feedback action
+              if (isRideCompleted) {
+                handleRideCompleted();
+                return;
+              }
+
+              // 2. join_request_accepted → go to the ride
+              if (notification.type === 'join_request_accepted') {
+                const rideId = notification.related_ride_id;
+                if (rideId) router.push(`/(dashboard)/(rides)/${rideId}`);
+                return;
+              }
+
+              // 3. join_request or friend_request → go to the requester's profile
+              if (isJoinRequest || isFriendRequest) {
+                const handle =
+                  notification.related_user_handle ||
+                  notification.user_username ||
+                  notification.user_handle;
+                if (handle) {
+                  router.push(`/(dashboard)/user/${handle.replace(/^@/, '')}`);
+                } else if (notification.related_user_id) {
+                  router.push(`/(dashboard)/user/${notification.related_user_id}`);
+                }
+                return;
+              }
+
+              // 4. Any other notification with a ride id → go to ride
+              const rideId = notification.related_ride_id;
+              if (rideId) router.push(`/(dashboard)/(rides)/${rideId}`);
+            }}
           >
             <View style={styles.notificationContent}>
               <View style={styles.notificationHeader}>

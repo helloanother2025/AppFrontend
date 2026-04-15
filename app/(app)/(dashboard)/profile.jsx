@@ -16,7 +16,7 @@ import { useRouter } from 'expo-router'
 import ProfileImage from '../../../components/ProfileImage'
 
 const UserProfile = () => {
-    const { friends, fetchFriends } = useFriends();
+  const { friends, fetchFriends } = useFriends();
   const { currentUser, fetchCurrentUser, logout } = useUser();
   const { myRides, joinedRides, fetchMyRides, fetchJoinedRides } = useRide();
   const router = useRouter();
@@ -32,6 +32,7 @@ const UserProfile = () => {
     fetchCurrentUser();
     fetchMyRides();
     fetchJoinedRides();
+    fetchFriends();
     // Fetch average feedback rating from feedback table
     const fetchAvg = async () => {
       try {
@@ -50,7 +51,7 @@ const UserProfile = () => {
       }
     };
     if (user && (user.id || user.user_id)) fetchAvg();
-  }, [fetchCurrentUser, fetchMyRides, fetchJoinedRides, user]);
+  }, [fetchCurrentUser, fetchMyRides, fetchJoinedRides, fetchFriends, user]);
 
   const handleLogout = async () => {
     Alert.alert(
@@ -153,7 +154,7 @@ const UserProfile = () => {
       />
       <FriendsBox
         friends={friends}
-        onFriendPress={(friend) => router.push(`/chat/chatScreen?userId=${friend.id}`)}
+        onFriendPress={(friend) => router.push(`/user/${friend.handle}`)}
         style={{ marginTop: 16 }}
       />
     </ScrollView>

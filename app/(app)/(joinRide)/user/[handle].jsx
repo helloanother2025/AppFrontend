@@ -10,6 +10,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import { useRide } from '../../../../context/RideContext'
 import { useUser } from '../../../../context/UserContext'
+import { useFriends } from '../../../../context/FriendsContext'
 import { usersAPI } from '../../../../src/api/users'
 import SendFriendRequestButton from '../../../../components/SendFriendRequestButton';
 import ProfileImage from '../../../../components/ProfileImage'
@@ -19,6 +20,7 @@ const UserDetails = () => {
   const { handle } = useLocalSearchParams();
   const { rides: availableRides } = useRide();
   const { fetchUserProfile } = useUser();
+  const { friends } = useFriends();
   const [user, setUser] = useState(null);
   const [rideStats, setRideStats] = useState({ createdCount: 0, joinedCount: 0 });
 
@@ -65,6 +67,10 @@ const UserDetails = () => {
     );
   }
   const profile = user;
+
+  const isAlreadyFriend = friends.some(
+    f => String(f.id || f.user_id) === String(profile.user_id)
+  );
 
   return (
     <ScrollView>
@@ -122,7 +128,7 @@ const UserDetails = () => {
         </View>
 
         {/* Add Friend Button only if not own profile, above contact info */}
-        {currentUser && profile.user_id !== currentUser?.user_id && (
+        {currentUser && profile.user_id !== currentUser?.user_id && !isAlreadyFriend && (
           <View style={{ marginTop: 16, marginBottom: 8 }}>
             <SendFriendRequestButton userId={profile.user_id} />
           </View>
@@ -131,7 +137,7 @@ const UserDetails = () => {
         {/* contact info */}
         <View>
           <Text style={styles.sectionTitle}>Contact</Text>
-          <StyledLink type='facebook' text={profile.name} value={profile.fb}></StyledLink>
+          {/* <StyledLink type='facebook' text={profile.name} value={profile.fb}></StyledLink>*/}
           <StyledLink type='phone' text={profile.phone} value={profile.phone}></StyledLink>
           <StyledLink type='email' text={profile.email} value={profile.email} ></StyledLink>
         </View> 

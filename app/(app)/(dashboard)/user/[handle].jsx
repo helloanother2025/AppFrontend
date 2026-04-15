@@ -1,18 +1,18 @@
 import { View, StyleSheet, TouchableOpacity } from 'react-native'
-import { StyledText as Text } from '../../../../../components/StyledText'
-import { StyledScrollView as ScrollView } from '../../../../../components/StyledScrollView'
-import { StyledCard as Card } from '../../../../../components/StyledCard'
-import { StyledLink } from '../../../../../components/StyledLink'
+import { StyledText as Text } from '../../../../components/StyledText'
+import { StyledScrollView as ScrollView } from '../../../../components/StyledScrollView'
+import { StyledCard as Card } from '../../../../components/StyledCard'
+import { StyledLink } from '../../../../components/StyledLink'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
-import { useRide } from '../../../../../context/RideContext'
-import { useUser } from '../../../../../context/UserContext'
-import { useFriends } from '../../../../../context/FriendsContext'
-import { usersAPI } from '../../../../../src/api/users'
-import SendFriendRequestButton from '../../../../../components/SendFriendRequestButton'
-import ProfileImage from '../../../../../components/ProfileImage'
+import { useRide } from '../../../../context/RideContext'
+import { useUser } from '../../../../context/UserContext'
+import { useFriends } from '../../../../context/FriendsContext'
+import { usersAPI } from '../../../../src/api/users'
+import SendFriendRequestButton from '../../../../components/SendFriendRequestButton'
+import ProfileImage from '../../../../components/ProfileImage'
 
 const UserDetails = () => {
   const { handle } = useLocalSearchParams();
@@ -22,13 +22,13 @@ const UserDetails = () => {
   const [user, setUser] = useState(null);
   const [rideStats, setRideStats] = useState({ createdCount: 0, joinedCount: 0 });
 
-  const router = useRouter();
-
   const targetHandle = Array.isArray(handle) ? handle[0] : handle;
   const normalizedHandle = targetHandle?.startsWith('@') ? targetHandle.slice(1) : targetHandle;
 
   const createdRides = (availableRides || []).filter(r => r.creator?.handle === user?.handle);
   const joinedRides  = (availableRides || []).filter(r => r.partners?.some(p => p.handle === user?.handle));
+
+  const router = useRouter();
 
   useEffect(() => {
     let isMounted = true;
