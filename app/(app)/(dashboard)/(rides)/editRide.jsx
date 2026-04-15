@@ -29,6 +29,8 @@ export default function EditRide() {
   const [saving, setSaving] = useState(false);
 
   const carOptions = ['Uber', 'Pathao', 'Private Car'];
+  // Maps UI label -> valid ride_provider_enum value in DB
+  const providerEnumMap = { 'Uber': 'Uber', 'Pathao': 'Pathao', 'Private Car': 'Private' };
 
   useEffect(() => {
     let isMounted = true;
@@ -72,10 +74,14 @@ export default function EditRide() {
       await updateRide(id, {
         fare: fareValue,
         transportMode: carOptions.includes(transport) ? 'Car' : transport,
-        rideProvider: carOptions.includes(transport) ? transport : (rideProvider || undefined),
+        // Map UI label to valid ride_provider_enum ('Private Car' -> 'Private')
+        rideProvider: carOptions.includes(transport)
+          ? (providerEnumMap[transport] || 'Private')
+          : (rideProvider || undefined),
+        // 'any' is not a valid gender_enum — send null so COALESCE keeps existing DB value
         genderPreference: preferences.gender !== 'Any'
           ? preferences.gender.toLowerCase()
-          : 'any',
+          : null,
         availableSeats: preferences.numPartners,
         notes: preferences.otherNotes || undefined,
       });
