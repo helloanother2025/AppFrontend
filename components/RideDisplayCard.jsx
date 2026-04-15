@@ -154,7 +154,6 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
             }
           }}
         >
-          <Text style={{ fontSize: 30 }}>👤 </Text>
         <View style={styles.creatorRow}>
           <ProfileImage profilePicture={ride.creator.profilePicture} name={ride.creator.name} style={{ width: 40, height: 40, borderRadius: 20, marginRight: 10 }} />
           <View>

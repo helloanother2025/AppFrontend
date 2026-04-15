@@ -6,9 +6,6 @@ import { StyledLink } from '../../../../../components/StyledLink'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import users from '../../../../../data/userData.json'
-import rides from '../../../../../data/rideData.json'
-import React from 'react'
 import ProfileImage from '../../../../../components/ProfileImage'
 
 const UserDetails = () => {

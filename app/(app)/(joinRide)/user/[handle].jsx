@@ -12,7 +12,6 @@ import { useRide } from '../../../../context/RideContext'
 import { useUser } from '../../../../context/UserContext'
 import { usersAPI } from '../../../../src/api/users'
 import SendFriendRequestButton from '../../../../components/SendFriendRequestButton';
-import React from 'react'
 import ProfileImage from '../../../../components/ProfileImage'
 
 const UserDetails = () => {

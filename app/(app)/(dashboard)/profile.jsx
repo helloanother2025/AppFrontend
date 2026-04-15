@@ -87,13 +87,10 @@ const UserProfile = () => {
       <View style={{ alignItems: 'center', marginVertical: 16 }}>
         {/* Theme toggle removed, now in settings icon in header */}
       </View>
-      <View style={styles.imgPlaceholder}>
-        <Text>Image</Text>
-      </View>
       <ProfileImage
         profilePicture={user.profilePicture}
         name={user.name}
-        style={{ width: 150, height: 150, borderRadius: 75, alignSelf: 'center', marginVertical: 20 }}
+        style={{ width: 150, height: 150, borderRadius: 75, alignSelf: 'center', marginBottom: 20 }}
       />
 
       <Card>
@@ -141,7 +138,7 @@ const UserProfile = () => {
         {/* contact info */}
         <View>
           <Text style={styles.sectionTitle}>Contact</Text>
-          <StyledLink type='facebook' text={user.name} value={user.fb}></StyledLink>
+          {/* <StyledLink type='facebook' text={user.name} value={user.fb}></StyledLink> */}
                     
           <StyledLink type='phone' text={user.phone} value={user.phone}></StyledLink>
           
