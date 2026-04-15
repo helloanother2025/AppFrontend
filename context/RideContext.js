@@ -279,6 +279,28 @@ export const RideProvider = ({ children }) => {
     }
   }, [selectedRide]);
 
+  const updateRide = useCallback(async (rideId, rideData) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await ridesAPI.updateRide(rideId, rideData);
+      const updatedRide = normalizeRide(response?.ride ?? response);
+      if (updatedRide) {
+        setRides((prev) => prev.map((r) => String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r));
+        setMyRides((prev) => prev.map((r) => String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r));
+        setJoinedRides((prev) => prev.map((r) => String(r.id) === String(rideId) ? { ...r, ...updatedRide } : r));
+        setSelectedRide((prev) => prev && String(prev.id) === String(rideId) ? { ...prev, ...updatedRide } : prev);
+      }
+      return updatedRide;
+    } catch (err) {
+      console.error('Failed to update ride:', err);
+      setError(err.message || 'Failed to update ride');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
 
   // Update a ride's passengers in myRides and joinedRides by rideId
   const updateRidePassengers = useCallback(async (rideId) => {
@@ -307,6 +329,7 @@ export const RideProvider = ({ children }) => {
         getRideDetails,
         createRide,
         completeRide,
+        updateRide,
         updateRideStatus,
         deleteRide,
         selectRide,

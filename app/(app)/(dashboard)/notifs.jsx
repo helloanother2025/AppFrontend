@@ -151,7 +151,7 @@ const Notifications = () => {
     }
   };
 
-  // ✅ Empty state fallback
+  // Empty state fallback
   if (loading) {
     return (
       <View style={styles.emptyContainer}>
@@ -295,7 +295,33 @@ const Notifications = () => {
   );
 };
 
-export default Notifications;
+function ChatsTab() {
+  return (
+    <View style={styles.tabContent}>
+      <Text style={styles.text}>Chats</Text>
+    </View>
+  );
+}
+
+const Tab = createMaterialTopTabNavigator();
+
+export default function NotificationScreen() {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        tabBarLabelStyle: { fontSize: 15, fontWeight: '600' },
+        tabBarIndicatorStyle: { backgroundColor: '#000000ff', height: 3 },
+        tabBarActiveTintColor: '#000000ff',
+        tabBarInactiveTintColor: 'gray',
+        tabBarStyle: { backgroundColor: '#f8f8f8' },
+      }}
+    >
+      <Tab.Screen name="Notifications" component={NotificationsTab} />
+      <Tab.Screen name="Chats" component={ChatsTab} />
+    </Tab.Navigator>
+  );
+}
+
 
 const styles = StyleSheet.create({
   container: {
@@ -454,4 +480,18 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 6,
   },
+
+  //Tabs
+  tabContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  text: {
+    fontSize: 18,
+  },
 });
+
+
+

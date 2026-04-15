@@ -13,6 +13,7 @@ import { joinRequestsAPI } from '../src/api/joinRequests';
 import { useSearch } from '../context/SearchContext';
 import { useUser } from '../context/UserContext';
 import { useRide } from '../context/RideContext';
+import ProfileImage from '../components/ProfileImage'
 
 export default function RideDisplayCard({ ride, join = false, create = false, ongoing = false, onPress }) {
   const [isRequested, setIsRequested] = useState(false);
@@ -154,10 +155,13 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
           }}
         >
           <Text style={{ fontSize: 30 }}>👤 </Text>
+        <View style={styles.creatorRow}>
+          <ProfileImage profilePicture={ride.creator.profilePicture} name={ride.creator.name} style={{ width: 40, height: 40, borderRadius: 20, marginRight: 10 }} />
           <View>
             <Text style={{ fontWeight: 'semibold', fontSize: 16 }}>{ride.creator.name || 'Unknown'}</Text>
             <Text style={styles.handle}>{ride.creator.handle || '@user'}</Text>
           </View>
+        </View>
         </TouchableOpacity>
       )}
       

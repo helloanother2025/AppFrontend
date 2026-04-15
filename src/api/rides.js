@@ -202,6 +202,24 @@ export const ridesAPI = {
     }
   },
 
+  /* Update ride details (creator only) */
+  updateRide: async (rideId, rideData) => {
+    try {
+      const response = await client.put(`/rides/${rideId}`, {
+        fare: rideData.fare !== undefined ? parseFloat(rideData.fare) : undefined,
+        transportMode: rideData.transportMode,
+        rideProvider: rideData.rideProvider,
+        genderPreference: rideData.genderPreference,
+        availableSeats: rideData.availableSeats !== undefined ? parseInt(rideData.availableSeats) : undefined,
+        notes: rideData.notes,
+      });
+      return response.data;
+    } catch (error) {
+      const message = handleApiError(error, 'Failed to update ride');
+      throw new Error(message);
+    }
+  },
+
   /**
    * Delete a past ride (creator only)
    */

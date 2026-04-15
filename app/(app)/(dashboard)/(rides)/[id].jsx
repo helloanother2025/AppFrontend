@@ -1,4 +1,4 @@
-import { TouchableOpacity, StyleSheet } from 'react-native'
+import { TouchableOpacity, StyleSheet, View, Alert } from 'react-native'
 import { StyledText as Text } from '../../../../components/StyledText'
 import { StyledScrollView as ScrollView } from '../../../../components/StyledScrollView'
 import RideDetailsCard from '../../../../components/RideDetailsCard'
@@ -7,11 +7,13 @@ import FontAwesome from '@expo/vector-icons/FontAwesome'
 import RouteMap from '../../../../components/RouteMap'
 import React, { useEffect, useState } from 'react';
 import { useRide } from '../../../../context/RideContext';
-
+import { useUser } from '../../../../context/UserContext';
+import { StyledButton } from '../../../../components/StyledButton';
 
 const RideDetails = () => {
   const { id } = useLocalSearchParams();
-  const { rides, getRideDetails } = useRide();
+  const { rides, getRideDetails, deleteRide } = useRide();
+  const { currentUser } = useUser();
   const [ride, setRide] = useState(null);
 
   const rideId = Array.isArray(id) ? id[0] : id;
@@ -40,6 +42,41 @@ const RideDetails = () => {
     );
   }
 
+  // Show edit/delete only if the logged-in user is the ride creator
+  const isCreator =
+    currentUser &&
+    ride.creator &&
+    String(ride.creator.user_id) === String(currentUser.user_id);
+
+  const handleEdit = () => {
+    router.push(`/(createRide)/editRide?id=${rideId}`);
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      "Delete Ride",
+      "Are you sure you want to delete this ride?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteRide(rideId);
+              router.back();
+            } catch (err) {
+              Alert.alert('Delete Failed', err.message || 'Could not delete ride. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <ScrollView>
       <TouchableOpacity
@@ -62,6 +99,17 @@ const RideDetails = () => {
           return true;
         })()}
       />
+
+      {isCreator && (
+        <View style={styles.buttonContainer}>
+          <View style={{flex: 1}}>
+            <StyledButton onPress={handleEdit} title="Edit "></StyledButton>
+          </View>
+          <View style={{flex: 1}}>
+            <StyledButton style={{backgroundColor: '#FF7272'}} onPress={handleDelete} title="Delete"></StyledButton>
+          </View>
+        </View>
+      )}
     </ScrollView>
   );
 };
@@ -72,5 +120,12 @@ const styles = StyleSheet.create({
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-  }
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 20,
+    paddingHorizontal: 20,
+    gap: 20,
+  },
 });

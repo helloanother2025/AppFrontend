@@ -12,6 +12,7 @@ import { Audio } from 'expo-audio';
 import { Video } from 'expo-video';
 import * as Linking from 'expo-linking';
 import { StyledText as Text } from '../../../components/StyledText';
+<<<<<<< HEAD
 import { chatAPI } from '../../../src/api/chat';
 import { usersAPI } from '../../../src/api/users';
 import { useUser } from '../../../context/UserContext';
@@ -20,6 +21,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { parseServerDate } from '../../../src/utils/date';
+=======
+import ProfileImage from '../../../components/ProfileImage';
+>>>>>>> 0940715e5e95fe1cca6bbebceb13a6b4fe528ccc
 
 
 const SwipeableBubble = ({ children, message, onReply, position }) => {
@@ -83,7 +87,27 @@ export default function ChatScreen() {
   const [inputText, setInputText] = useState('');
   const [error, setError] = useState(null);
 
+<<<<<<< HEAD
   // Keyboard listener - MUST be before any early returns
+=======
+
+  const [messages, setMessages] = useState([
+    {
+      _id: 3,
+      text: 'Hi there!',
+      createdAt: new Date('2025-10-15T10:00:00'),
+      user: { _id: 2, name: user.name, avatar: user.profilePicture },
+    },
+    {
+      _id: 2,
+      text: 'Hello!',
+      createdAt: new Date('2025-10-15T10:00:00'),
+      user: { _id: 1, name: 'You', avatar: users[0].profilePicture },
+    },
+  ]);
+
+  // Keyboard listener
+>>>>>>> 0940715e5e95fe1cca6bbebceb13a6b4fe528ccc
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
     const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
@@ -322,6 +346,7 @@ export default function ChatScreen() {
           setReplyingTo(null);
         }
 
+<<<<<<< HEAD
         console.log('✉️ Sending message:', msg.text);
 
         // Optimistically add message to UI
@@ -353,6 +378,19 @@ export default function ChatScreen() {
       }
     },
     [replyingTo, chatId, otherUser?.user_id, userId]
+=======
+      const messagesWithAvatar = newMsgs.map(msg => ({
+        ...msg,
+        user: {
+          ...msg.user,
+          avatar: users[0].profilePicture,
+        },
+      }));
+
+      setMessages(previous => GiftedChat.append(previous, messagesWithAvatar));
+    },
+    [replyingTo]
+>>>>>>> 0940715e5e95fe1cca6bbebceb13a6b4fe528ccc
   );
 
   // Render error state
@@ -477,6 +515,7 @@ export default function ChatScreen() {
     }
   };
 
+<<<<<<< HEAD
   // Get initials
   const getInitials = (name) => {
     if (!name) return '';
@@ -496,6 +535,8 @@ export default function ChatScreen() {
     );
   };
 
+=======
+>>>>>>> 0940715e5e95fe1cca6bbebceb13a6b4fe528ccc
   // Bubble styling
   const renderBubble = (props) => {
   const { currentMessage, position } = props;
@@ -762,6 +803,32 @@ export default function ChatScreen() {
   };
 
 
+  //Delete message
+  const deleteMessage = (id) => {
+    setMessages((previousMessages) =>
+      previousMessages.filter((msg) => msg._id !== id)
+    );
+  };
+
+  const handleLongPress = (context, message) => {
+    Alert.alert(
+      "Message Options",
+      "What do you want to do?",
+      [
+        {
+          text: "Delete Message",
+          onPress: () => deleteMessage(message._id),
+          style: "destructive",
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ]
+    );
+  };
+
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -774,6 +841,7 @@ export default function ChatScreen() {
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
 
+<<<<<<< HEAD
         {/* Avatar or initials */}
         {(otherUser?.profilePicture || otherUser?.avatar_url) ? (
           <Image
@@ -795,6 +863,13 @@ export default function ChatScreen() {
             <Text style={{ color: '#000', fontWeight: 'bold' }}>{getInitials(otherUser?.name || userName || 'User')}</Text>
           </View>
         )}
+=======
+        <ProfileImage
+          profilePicture={user.profilePicture}
+          name={user.name}
+          style={{ width: 40, height: 40, borderRadius: 20, marginRight: 10 }}
+        />
+>>>>>>> 0940715e5e95fe1cca6bbebceb13a6b4fe528ccc
 
         <View style={{ width: '80%' }}>
           <Text style={styles.name}>{otherUser?.name || userName || 'User'}</Text>
@@ -843,8 +918,18 @@ export default function ChatScreen() {
         inverted={true}
         renderBubble={renderBubble}
         renderDay={renderDay}
+<<<<<<< HEAD
         renderTime={renderTime}
         renderAvatar={renderAvatar}
+=======
+        renderAvatar={(props) => (
+          <ProfileImage
+            profilePicture={props.currentMessage.user.avatar}
+            name={props.currentMessage.user.name}
+            style={styles.avatar}
+          />
+        )}
+>>>>>>> 0940715e5e95fe1cca6bbebceb13a6b4fe528ccc
         showUserAvatar={false} 
         renderInputToolbar={renderInputToolbar}
         renderSend={renderSend}
@@ -852,6 +937,7 @@ export default function ChatScreen() {
         renderMessageImage={renderMessageImage}
         renderMessageVideo={renderMessageVideo}
         renderCustomView={renderCustomView}
+        onLongPress={handleLongPress}
         listViewProps={{
           ref: flatListRef,
         }}
@@ -1045,4 +1131,4 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     flexWrap: 'wrap',
   },
-}); 
+});

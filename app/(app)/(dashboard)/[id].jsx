@@ -1,6 +1,7 @@
-import { TouchableOpacity, StyleSheet } from 'react-native'
+import { TouchableOpacity, StyleSheet, View, Alert } from 'react-native'
 import { StyledText as Text } from '../../../components/StyledText'
 import { StyledScrollView as ScrollView } from '../../../components/StyledScrollView'
+import { StyledButton as Button } from '../../../components/StyledButton'
 import RideDetailsCard from '../../../components/RideDetailsCard'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
@@ -40,6 +41,24 @@ const RideDetails = () => {
     );
   }
 
+  const handleEdit = () => {
+      router.push(`/(createRide)/editRide?id=${id}`);
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      "Delete Ride",
+      "Are you sure you want to delete this ride?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        { text: "OK", onPress: () => console.log("Ride deleted")}
+      ]
+    );
+  };
+
   return (
     <ScrollView>
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -59,6 +78,14 @@ const RideDetails = () => {
           return true;
         })()}
       />
+      <View style={styles.buttonContainer}>
+        <View style={{flex: 1}}>
+          <Button onPress={handleEdit} title="Edit "></Button>
+        </View>
+        <View style={{flex: 1}}>
+          <Button style={{backgroundColor: '#FF7272'}} onPress={handleDelete} title="Delete"></Button>
+        </View>
+      </View>
     </ScrollView>
   );
 };
@@ -69,5 +96,12 @@ const styles = StyleSheet.create({
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-  }
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 20,
+    paddingHorizontal: 20,
+    gap: 20,
+  },
 });

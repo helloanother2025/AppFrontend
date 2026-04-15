@@ -17,6 +17,7 @@ import { parseServerDate } from '../src/utils/date';
 import { useUser } from '../context/UserContext';
 import { useRide } from '../context/RideContext';
 import { normalizeRide } from '../src/utils/rideMapper';
+import ProfileImage from '../components/ProfileImage'
 
 export default function RideDetailsCard({ ride, ongoing = false, join = false }) {
   const router = useRouter();
@@ -279,7 +280,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
           style={styles.creatorRow}
           onPress={() => creator?.handle && router.push(`user/${creator.handle}`)}
         >
-          <Text style={{ fontSize: 30 }}>👤 </Text>
+          <ProfileImage profilePicture={creator.profilePicture} name={creator.name} style={{ width: 40, height: 40, borderRadius: 20, marginRight: 10 }} />
           <View>
             <Text style={styles.creatorName}>{creatorName}</Text>
             <Text style={styles.handle}>{creatorHandle}</Text>
@@ -335,7 +336,7 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
                       if (profileId) router.push(`/user/${profileId}`);
                     }}
                   >
-                    <Text style={{ fontSize: 30 }}>👤 </Text>
+                    <ProfileImage profilePicture={partner.profilePicture} name={partner.name} style={{ width: 40, height: 40, borderRadius: 20, marginRight: 10 }} />
                     <View>
                       <Text style={styles.creatorName}>{partner.name}</Text>
                       <Text style={styles.handle}>@{partner.username || partner.handle}</Text>
