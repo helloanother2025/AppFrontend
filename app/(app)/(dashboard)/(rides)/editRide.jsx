@@ -99,7 +99,7 @@ export default function EditRide() {
     <ScrollView style={{ paddingHorizontal: 20 }}>
       <TouchableOpacity
         style={styles.backButton}
-        onPress={() => router.push(`/(dashboard)/(rides)/${id}`)}
+        onPress={() => router.back()}
       >
         <FontAwesome style={{ marginRight: 10 }} name="chevron-left" size={14} color="black" />
         <Text style={{ fontSize: 16, fontWeight: 'semibold' }}>Back</Text>

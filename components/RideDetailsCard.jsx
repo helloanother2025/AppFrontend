@@ -28,8 +28,9 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
   const [joinStatus, setJoinStatus] = useState(null);
   const [isCompleted, setIsCompleted] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
   const { currentUser } = useUser();
-  const { selectRide, updateRideStatus } = useRide();
+  const { selectRide, updateRideStatus, fetchMyRides, fetchJoinedRides } = useRide();
   const [passengers, setPassengers] = useState([]);
 
   if (!ride) return <Text>No ride data provided.</Text>;
@@ -175,56 +176,97 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
       setRequesting(false);
     }
   };
-  
+
+
+  const handleCancel = async () => {
+    try {
+      const updated = await updateRideStatus(ride.id, 'cancelled');
+      selectRide(updated || ride);
+      Alert.alert('Success', 'Ride has been cancelled!');
+      setTimeout(() => {
+        fetchMyRides();
+        fetchJoinedRides();
+      }, 400);
+    } catch (e) {
+      Alert.alert('Error', 'Failed to cancel ride');
+    }
+  };
+
+  // Inline 3-dot dropdown (anchors below the ⋯ button)
+  const RideMenu = ({ showEdit }) => (
+    <>
+      {showEdit && (
+        <TouchableOpacity
+          style={menuStyles.menuItem}
+          onPress={() => { setMenuVisible(false); router.push(`/(dashboard)/(rides)/editRide?id=${ride.id}`); }}
+        >
+          <Ionicons name="pencil-outline" size={16} color="#000" />
+          <Text style={menuStyles.menuText}>Edit Ride</Text>
+        </TouchableOpacity>
+      )}
+      <TouchableOpacity
+        style={menuStyles.menuItem}
+        onPress={() => { setMenuVisible(false); handleCancel(); }}
+      >
+        <Ionicons name="close-circle-outline" size={16} color="#e63e4c" />
+        <Text style={[menuStyles.menuText, { color: '#e63e4c' }]}>Cancel Ride</Text>
+      </TouchableOpacity>
+    </>
+  );
 
   return (
     <Card>
       {/* Start/Cancel buttons for own created rides, only if not ongoing */}
-      {isOwnRide && rideStatus === 'unactive' && rideStatus !== 'ongoing' && (
-        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 8, width: '100%'}}>
-          <Button
-            title="Start Ride"
-            style={{ width: '62%', flex: 1, marginRight: 8, backgroundColor: '#000' }}
-            textStyle={{ color: '#fff', fontWeight: 'bold' }}
-            onPress={async () => {
-              try {
-                const updated = await updateRideStatus(ride.id, 'started');
-                selectRide(updated || ride);
-                Alert.alert('Success', 'Ride has started!');
-              } catch (e) {
-                Alert.alert('Error', 'Failed to start ride');
-              }
-            }}
-          />
-          <Button
-            title="Cancel"
-            style={{ backgroundColor: '#e63e4c' }}
-            textStyle={{ color: '#fff', fontWeight: 'bold' }}
-            onPress={async () => {
-              try {
-                const updated = await updateRideStatus(ride.id, 'cancelled');
-                selectRide(updated || ride);
-                Alert.alert('Success', 'Ride has been cancelled!');
-              } catch (e) {
-                Alert.alert('Error', 'Failed to cancel ride');
-              }
-            }}
-          />
+      {isOwnRide && rideStatus === 'unactive' && (
+        <View style={menuStyles.actionWrapper}>
+          <View style={menuStyles.actionRow}>
+            <Button
+              title="Start Ride"
+              style={{ flex: 1, marginRight: 8, backgroundColor: '#000' }}
+              textStyle={{ color: '#fff', fontWeight: 'bold' }}
+              onPress={async () => {
+                try {
+                  const updated = await updateRideStatus(ride.id, 'started');
+                  selectRide(updated || ride);
+                  Alert.alert('Success', 'Ride has started!');
+                } catch (e) {
+                  Alert.alert('Error', 'Failed to start ride');
+                }
+              }}
+            />
+            <TouchableOpacity style={menuStyles.dotButton} onPress={() => setMenuVisible(v => !v)}>
+              <Ionicons name="ellipsis-vertical" size={20} color="#000" />
+            </TouchableOpacity>
+          </View>
+          {menuVisible && (
+            <View style={menuStyles.dropdown}>
+              <RideMenu showEdit />
+            </View>
+          )}
         </View>
       )}
       {isOwnRide && rideStatus === 'started' && (
-        <Button
-          title="Complete ride"
-          style={{ marginBottom: 16, backgroundColor: '#000' }}
-          textStyle={{ color: '#fff', fontWeight: 'bold' }}
-          onPress={() => {
-            selectRide(ride);
-            router.push({
-              pathname: '/complete',
-              params: { ride: JSON.stringify(ride) }
-            });
-          }}
-        />
+        <View style={menuStyles.actionWrapper}>
+          <View style={menuStyles.actionRow}>
+            <Button
+              title="Complete ride"
+              style={{ flex: 1, marginRight: 8, backgroundColor: '#000' }}
+              textStyle={{ color: '#fff', fontWeight: 'bold' }}
+              onPress={() => {
+                selectRide(ride);
+                router.push({ pathname: '/complete', params: { ride: JSON.stringify(ride) } });
+              }}
+            />
+            <TouchableOpacity style={menuStyles.dotButton} onPress={() => setMenuVisible(v => !v)}>
+              <Ionicons name="ellipsis-vertical" size={20} color="#000" />
+            </TouchableOpacity>
+          </View>
+          {menuVisible && (
+            <View style={menuStyles.dropdown}>
+              <RideMenu showEdit={false} />
+            </View>
+          )}
+        </View>
       )}
       {join && !isOwnRide && (
         <>
@@ -456,6 +498,51 @@ export default function RideDetailsCard({ ride, ongoing = false, join = false })
     </Card>
   );
 }
+
+const menuStyles = StyleSheet.create({
+  actionWrapper: {
+    position: 'relative',
+    marginBottom: 8,
+    zIndex: 10,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+  },
+  dotButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+  },
+  dropdown: {
+    position: 'absolute',
+    right: 0,
+    top: 44,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingVertical: 4,
+    minWidth: 160,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 10,
+    zIndex: 100,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  menuText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#000',
+  },
+});
 
 const styles = StyleSheet.create({
   subtitle: {

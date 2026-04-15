@@ -20,11 +20,12 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
   const [joinStatus, setJoinStatus] = useState(null);
   const [isCompleted, setIsCompleted] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const router = useRouter();
   const { searchData } = useSearch();
   const { currentUser } = useUser();
-  const { selectRide, updateRideStatus } = useRide();
+  const { selectRide, updateRideStatus, fetchMyRides, fetchJoinedRides } = useRide();
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -105,9 +106,7 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
       Alert.alert('Error', 'Ride information missing');
       return;
     }
-
     try {
-      // Consensus on 'started' as the status for ongoing rides
       const updated = await updateRideStatus(ride.id, 'started');
       selectRide(updated || ride);
       Alert.alert('Success', 'Ride has started!');
@@ -115,6 +114,44 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
       Alert.alert('Error', error.message || 'Failed to start ride');
     }
   };
+
+  const handleCancelRide = async () => {
+    try {
+      const updated = await updateRideStatus(ride.id, 'cancelled');
+      selectRide(updated || ride);
+      Alert.alert('Success', 'Ride has been cancelled!');
+      // Belt-and-suspenders: re-fetch after a short delay so the dashboard
+      // always sees the committed state from the backend.
+      setTimeout(() => {
+        fetchMyRides();
+        fetchJoinedRides();
+      }, 400);
+    } catch (e) {
+      Alert.alert('Error', 'Failed to cancel ride');
+    }
+  };
+
+  // Inline 3-dot dropdown (anchors below the ⋯ button)
+  const RideMenu = ({ showEdit }) => (
+    <>
+      {showEdit && (
+        <TouchableOpacity
+          style={menuStyles.menuItem}
+          onPress={() => { setMenuVisible(false); router.push(`/(dashboard)/(rides)/editRide?id=${ride.id}`); }}
+        >
+          <Entypo name="edit" size={15} color="#000" />
+          <Text style={menuStyles.menuText}>Edit Ride</Text>
+        </TouchableOpacity>
+      )}
+      <TouchableOpacity
+        style={menuStyles.menuItem}
+        onPress={() => { setMenuVisible(false); handleCancelRide(); }}
+      >
+        <Entypo name="cross" size={16} color="#e63e4c" />
+        <Text style={[menuStyles.menuText, { color: '#e63e4c' }]}>Cancel Ride</Text>
+      </TouchableOpacity>
+    </>
+  );
 
   // Determine if this is the user's own created ride and its status
   const creatorId = ride?.creator_id ?? ride?.creator?.user_id ?? ride?.creator?.id;
@@ -259,60 +296,95 @@ export default function RideDisplayCard({ ride, join = false, create = false, on
         </View>
       )}
 
-      {/* Show Start and Cancel buttons for created rides (unactive status) */}
       {showStartButton && (
-        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 4, width: '100%'}}>
-          <Button
-            title="Start ride"
-            style={{ width: '62%', marginRight: 14, backgroundColor: '#000'}}
-            textStyle={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}
-            onPress={handleStartRide}
-          />
-          <Button
-            title="Cancel"
-            style={{backgroundColor: '#e63e4c'}}
-            textStyle={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}
-            onPress={async () => {
-              try {
-                const updated = await updateRideStatus(ride.id, 'cancelled');
-                selectRide(updated || ride);
-                Alert.alert('Success', 'Ride has been cancelled!');
-              } catch (e) {
-                Alert.alert('Error', 'Failed to cancel ride');
-              }
-            }}
-          />
+        <View style={menuStyles.actionWrapper}>
+          <View style={menuStyles.actionRow}>
+            <Button
+              title="Start ride"
+              style={{ flex: 1, marginRight: 8, backgroundColor: '#000' }}
+              textStyle={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}
+              onPress={handleStartRide}
+            />
+            <TouchableOpacity style={menuStyles.dotButton} onPress={() => setMenuVisible(v => !v)}>
+              <Entypo name="dots-three-vertical" size={16} color="#000" />
+            </TouchableOpacity>
+          </View>
+          {menuVisible && (
+            <View style={menuStyles.dropdown}>
+              <RideMenu showEdit />
+            </View>
+          )}
         </View>
       )}
 
-      {/* Show Complete Ride and Cancel Ride buttons side by side for ongoing rides */}
       {showCompleteButton && (
-        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 4, width: '100%' }}>
-          <Button
-            title="Complete ride"
-            style={{ width: '60%', marginRight: 14, backgroundColor: '#000'}}
-            textStyle={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}
-            onPress={handleComplete}
-          />
-          <Button
-            title="Cancel"
-            style={{backgroundColor: '#e63e4c'}}
-            textStyle={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}
-            onPress={async () => {
-              try {
-                const updated = await updateRideStatus(ride.id, 'cancelled');
-                selectRide(updated || ride);
-                Alert.alert('Success', 'Ride has been cancelled!');
-              } catch (e) {
-                Alert.alert('Error', 'Failed to cancel ride');
-              }
-            }}
-          />
+        <View style={menuStyles.actionWrapper}>
+          <View style={menuStyles.actionRow}>
+            <Button
+              title="Complete ride"
+              style={{ flex: 1, marginRight: 8, backgroundColor: '#000' }}
+              textStyle={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}
+              onPress={handleComplete}
+            />
+            <TouchableOpacity style={menuStyles.dotButton} onPress={() => setMenuVisible(v => !v)}>
+              <Entypo name="dots-three-vertical" size={16} color="#000" />
+            </TouchableOpacity>
+          </View>
+          {menuVisible && (
+            <View style={menuStyles.dropdown}>
+              <RideMenu showEdit={false} />
+            </View>
+          )}
         </View>
       )}
     </CardButton>
   );
 }
+
+const menuStyles = StyleSheet.create({
+  actionWrapper: {
+    position: 'relative',
+    marginTop: 4,
+    zIndex: 10,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+  },
+  dotButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+  },
+  dropdown: {
+    position: 'absolute',
+    right: 0,
+    bottom: 44,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingVertical: 4,
+    minWidth: 160,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 10,
+    zIndex: 100,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  menuText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#000',
+  },
+});
 
 const styles = StyleSheet.create({
   subtitle: {
