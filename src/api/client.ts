@@ -59,6 +59,7 @@ client.interceptors.request.use(
   async (config) => {
     try {
       const token = await SecureStore.getItemAsync('authToken');
+      //console.log('[DEBUG] Auth token from SecureStore:', token);
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }

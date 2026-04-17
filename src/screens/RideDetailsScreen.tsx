@@ -26,6 +26,22 @@ import { getParsedRouteCoords, getRouteDistanceKm, getRouteMatchMetrics } from '
 
 
 export function RideDetailsScreen() {
+    const [groupChatId, setGroupChatId] = useState<string | null>(null);
+
+    // Fetch group chat id for this ride
+    useEffect(() => {
+      async function fetchGroupChatId() {
+        if (!rideId || isDemoMode) return;
+        try {
+          const chats = await chatAPI.getChats();
+          const rideChat = (chats?.chats || []).find((c: any) => String(c.ride_id) === String(rideId) && c.type === 'ride');
+          if (rideChat) setGroupChatId(String(rideChat.chat_id));
+        } catch {
+          setGroupChatId(null);
+        }
+      }
+      fetchGroupChatId();
+    }, [rideId, isDemoMode]);
   const { darkMode, isDemoMode } = useAppContext();
   const { searchData } = useSearch();
   const { user: currentUser } = useUser();
@@ -220,6 +236,16 @@ export function RideDetailsScreen() {
 
       <ScrollView contentContainerStyle={styles.body}>
         <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}> 
+          {/* Group Chat Button */}
+          {groupChatId && (
+            <Pressable
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10, backgroundColor: colors.brand, borderRadius: 8, padding: 10, alignSelf: 'flex-start' }}
+              onPress={() => router.push({ pathname: '/(app)/group-chat/[id]', params: { id: groupChatId } })}
+            >
+              <Ionicons name="people" size={16} color="#FFF" />
+              <Text style={{ color: '#FFF', fontWeight: '600' }}>Open Group Chat</Text>
+            </Pressable>
+          )}
           {!isMyRide ? (
             <View style={styles.creatorRow}>
               <Pressable onPress={() => router.push({ pathname: '/(app)/user/[id]', params: { id: ride.creator.id } })}>

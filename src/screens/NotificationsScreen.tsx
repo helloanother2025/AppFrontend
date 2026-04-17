@@ -14,6 +14,7 @@ const typeConfig = {
   join_request: { icon: 'car-outline', color: '#3B82F6', bg: '#EFF6FF' },
   join_request_sent: { icon: 'paper-plane-outline', color: '#2563EB', bg: '#EFF6FF' },
   friend_request: { icon: 'person-add-outline', color: '#8B5CF6', bg: '#F5F3FF' },
+  friend_request_accepted: { icon: 'person-done-outline', color: '#22C55E', bg: '#ECFDF5' },
   ride_update: { icon: 'car-outline', color: '#16A34A', bg: '#F0FDF4' },
   message: { icon: 'chatbubble-outline', color: '#E83950', bg: '#FFF0F2' },
   ride_cancelled: { icon: 'close-circle-outline', color: '#DC2626', bg: '#FEF2F2' },
@@ -30,14 +31,20 @@ export function NotificationsScreen() {
     markAllRead,
     refreshNotifications,
     darkMode,
+    deleteNotification,
   } = useAppContext();
   const [processingFriendRequestNotificationId, setProcessingFriendRequestNotificationId] = useState<string | null>(null);
+  const [friendRequestAction, setFriendRequestAction] = useState<'accept' | 'decline' | null>(null);
+  const [friendRequestError, setFriendRequestError] = useState<string | null>(null);
+  const [acceptedNotificationId, setAcceptedNotificationId] = useState<string | null>(null);
+  const [declinedNotificationId, setDeclinedNotificationId] = useState<string | null>(null);
   const textPrimary = darkMode ? colors.textPrimaryDark : '#111827';
   const textSecondary = darkMode ? colors.textSecondaryDark : '#6B7280';
   const cardBg = darkMode ? colors.cardDark : '#FFFFFF';
   const cardBorder = darkMode ? colors.borderDark : '#E5E7EB';
 
   const handleFriendRequestDecision = async (notification: any, decision: 'accept' | 'reject') => {
+    setFriendRequestError(null);
     const resolveRequestId = async (): Promise<string | null> => {
       if (notification?.requestId) {
         return String(notification.requestId);
@@ -62,27 +69,68 @@ export function NotificationsScreen() {
 
     try {
       setProcessingFriendRequestNotificationId(String(notification.id));
+      setFriendRequestAction(decision === 'accept' ? 'accept' : 'decline');
       const requestId = await resolveRequestId();
 
       if (!requestId) {
         markRead(notification.id);
-        Alert.alert('Request unavailable', 'This friend request is no longer pending.');
+        setFriendRequestError('This friend request is no longer pending.');
+        setProcessingFriendRequestNotificationId(null);
+        setFriendRequestAction(null);
         return;
       }
 
       if (decision === 'accept') {
         await friendsAPI.acceptFriendRequest(requestId);
+        setAcceptedNotificationId(String(notification.id));
+        setTimeout(() => {
+          setAcceptedNotificationId(null);
+          refreshNotifications();
+        }, 1200);
       } else {
-        await friendsAPI.declineFriendRequest(requestId);
+        // Confirm decline
+        Alert.alert(
+          `Decline ${notification.fromUser?.name || 'this user'}'s friend request?`,
+          '',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress: () => {
+                setProcessingFriendRequestNotificationId(null);
+                setFriendRequestAction(null);
+              },
+            },
+            {
+              text: 'Decline',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  await friendsAPI.declineFriendRequest(requestId);
+                  setDeclinedNotificationId(String(notification.id));
+                  setTimeout(() => {
+                    setDeclinedNotificationId(null);
+                    refreshNotifications();
+                  }, 600);
+                } catch (error: any) {
+                  setFriendRequestError('Could not decline. Try again.');
+                } finally {
+                  setProcessingFriendRequestNotificationId(null);
+                  setFriendRequestAction(null);
+                }
+              },
+            },
+          ]
+        );
+        return;
       }
 
       markRead(notification.id);
-      await refreshNotifications();
     } catch (error: any) {
-      const message = String(error?.response?.data?.error || error?.message || 'Please try again.');
-      Alert.alert('Action failed', message);
+      setFriendRequestError(String(error?.response?.data?.error || error?.message || 'Please try again.'));
     } finally {
       setProcessingFriendRequestNotificationId(null);
+      setFriendRequestAction(null);
     }
   };
 
@@ -93,12 +141,15 @@ export function NotificationsScreen() {
         showBack={true}
         onBack={() => router.back()}
         rightAction={
-          unreadCount > 0 ? (
-            <Pressable hitSlop={10} onPress={markAllRead} style={styles.markAllButton}>
-              <Ionicons name="checkmark-done-outline" size={14} color={colors.brand} />
-              <Text style={styles.markAllText}>Mark all read</Text>
-            </Pressable>
-          ) : undefined
+          <Pressable
+            hitSlop={10}
+            onPress={unreadCount > 0 ? markAllRead : undefined}
+            style={[styles.markAllButton, { opacity: unreadCount > 0 ? 1 : 0.5 }]}
+            disabled={unreadCount === 0}
+          >
+            <Ionicons name="checkmark-done-outline" size={14} color={unreadCount > 0 ? colors.brand : '#BDBDBD'} />
+            <Text style={[styles.markAllText, { color: unreadCount > 0 ? colors.brand : '#BDBDBD' }]}>Mark all read</Text>
+          </Pressable>
         }
       />
 
@@ -114,101 +165,136 @@ export function NotificationsScreen() {
             const config = typeConfig[key as keyof typeof typeConfig];
 
             return (
-              <Pressable
-                key={notification.id}
-                onPress={() => {
-                  markRead(notification.id);
-                  if (notification.actionTarget === 'ride_join_requests' && notification.rideId) {
-                    router.push({
-                      pathname: '/(app)/ride-status',
-                      params: {
-                        tab: 'created',
-                        createdFilter: 'requests',
-                        rideId: notification.rideId,
-                        requestId: notification.requestId || '',
-                      },
-                    });
-                    return;
-                  }
-                  if (notification.actionTarget === 'ride_details' && notification.rideId) {
-                    router.push({ pathname: '/(app)/ride-details', params: { rideId: notification.rideId } });
-                    return;
-                  }
-                  if (notification.actionTarget === 'user_profile' && notification.fromUser?.id) {
-                    router.push({ pathname: '/(app)/user/[id]', params: { id: notification.fromUser.id } });
-                  }
-                }}
-                style={[
-                  styles.card,
-                  {
-                    backgroundColor: cardBg,
-                    borderColor: cardBorder,
-                    opacity: notification.read ? 0.65 : 1,
-                  },
-                ]}
-              >
-                <View style={[styles.iconWrap, { backgroundColor: config.bg }]}> 
-                  {notification.fromUser ? (
-                    <UserAvatar size="sm" name={notification.fromUser.name} source={notification.fromUser.avatar ?? undefined} />
-                  ) : (
-                    <Ionicons name={config.icon as any} size={18} color={config.color} />
-                  )}
-                </View>
-
-                <View style={styles.cardCopy}>
-                  <View style={styles.cardTopRow}>
-                    <Text style={[styles.cardTitle, { color: textPrimary }]}>{notification.title}</Text>
-                    <View style={styles.timeWrap}>
-                      <Text style={[styles.cardTime, { color: textSecondary }]}>{notification.time}</Text>
-                      {!notification.read ? <View style={styles.unreadDot} /> : null}
-                    </View>
+              <View key={notification.id} style={{ position: 'relative' }}>
+                <Pressable
+                  onPress={() => {
+                    markRead(notification.id);
+                    if (notification.actionTarget === 'ride_join_requests' && notification.rideId) {
+                      router.push({
+                        pathname: '/(app)/ride-status',
+                        params: {
+                          tab: 'created',
+                          createdFilter: 'requests',
+                          rideId: notification.rideId,
+                          requestId: notification.requestId || '',
+                        },
+                      });
+                      return;
+                    }
+                    if (notification.actionTarget === 'ride_details' && notification.rideId) {
+                      router.push({ pathname: '/(app)/ride-details', params: { rideId: notification.rideId } });
+                      return;
+                    }
+                    if (notification.actionTarget === 'user_profile' && notification.fromUser?.id) {
+                      router.push({ pathname: '/(app)/user/[id]', params: { id: notification.fromUser.id } });
+                    }
+                  }}
+                  style={[
+                    styles.card,
+                    {
+                      backgroundColor: cardBg,
+                      borderColor: cardBorder,
+                      opacity: notification.read ? 0.65 : 1,
+                    },
+                  ]}
+                >
+                  <View style={[styles.iconWrap, { backgroundColor: config.bg }]}> 
+                    {notification.fromUser ? (
+                      <UserAvatar size="sm" name={notification.fromUser.name} source={notification.fromUser.avatar ?? undefined} />
+                    ) : (
+                      <Ionicons name={config.icon as any} size={18} color={config.color} />
+                    )}
                   </View>
 
-                  <Text style={[styles.cardBody, { color: textSecondary }]}>{notification.body}</Text>
-
-                  {!notification.read && notification.type === 'join_request' ? (
-                    <View style={styles.inlineActions}>
-                      <Pressable onPress={() => markRead(notification.id)} style={styles.acceptButton}>
-                        <Text style={styles.acceptButtonText}>Accept</Text>
-                      </Pressable>
-                      <Pressable onPress={() => markRead(notification.id)} style={styles.declineButton}>
-                        <Text style={styles.declineButtonText}>Decline</Text>
-                      </Pressable>
+                  <View style={styles.cardCopy}>
+                    <View style={styles.cardTopRow}>
+                      <Text style={[styles.cardTitle, { color: textPrimary }]}>{notification.title}</Text>
+                      <View style={[styles.timeWrap, { marginRight: 28 }]}> {/* Move time left to avoid X button */}
+                        <Text style={[styles.cardTime, { color: textSecondary }]}>{notification.time}</Text>
+                        {!notification.read ? <View style={styles.unreadDot} /> : null}
+                      </View>
                     </View>
-                  ) : null}
 
-                  {!notification.read && notification.type === 'friend_request' ? (
-                    <View style={styles.inlineActions}>
-                      <Pressable
-                        onPress={() => handleFriendRequestDecision(notification, 'accept')}
-                        style={styles.friendAcceptButton}
-                        disabled={processingFriendRequestNotificationId === String(notification.id)}
-                      >
-                        <Text style={styles.acceptButtonText}>
-                          {processingFriendRequestNotificationId === String(notification.id) ? 'Accepting...' : 'Accept'}
+                    <Text style={[styles.cardBody, { color: textSecondary }]}>{notification.body}</Text>
+
+                    {!notification.read && notification.type === 'join_request' ? (
+                      <View style={styles.inlineActions}>
+                        <Pressable onPress={() => markRead(notification.id)} style={styles.acceptButton}>
+                          <Text style={styles.acceptButtonText}>Accept</Text>
+                        </Pressable>
+                        <Pressable onPress={() => markRead(notification.id)} style={styles.declineButton}>
+                          <Text style={styles.declineButtonText}>Decline</Text>
+                        </Pressable>
+                      </View>
+                    ) : null}
+
+                    {!notification.read && notification.type === 'friend_request' ? (
+                      <View style={styles.inlineActions}>
+                        {acceptedNotificationId === String(notification.id) ? (
+                          <Text style={{ color: '#22C55E', fontWeight: '600', fontSize: 12 }}>
+                            You are now friends ✓
+                          </Text>
+                        ) : declinedNotificationId === String(notification.id) ? (
+                          <Text style={{ color: '#DC2626', fontWeight: '600', fontSize: 12 }}>
+                            Request declined
+                          </Text>
+                        ) : (
+                          <>
+                            <Pressable
+                              onPress={() => handleFriendRequestDecision(notification, 'accept')}
+                              style={styles.friendAcceptButton}
+                              disabled={processingFriendRequestNotificationId === String(notification.id)}
+                            >
+                              <Text style={styles.acceptButtonText}>
+                                {processingFriendRequestNotificationId === String(notification.id) && friendRequestAction === 'accept'
+                                  ? 'Accepting...'
+                                  : 'Accept'}
+                              </Text>
+                            </Pressable>
+                            <Pressable
+                              onPress={() => handleFriendRequestDecision(notification, 'reject')}
+                              style={styles.declineButton}
+                              disabled={processingFriendRequestNotificationId === String(notification.id)}
+                            >
+                              <Text style={styles.declineButtonText}>
+                                {processingFriendRequestNotificationId === String(notification.id) && friendRequestAction === 'decline'
+                                  ? 'Declining...'
+                                  : 'Decline'}
+                              </Text>
+                            </Pressable>
+                          </>
+                        )}
+                        {friendRequestError && processingFriendRequestNotificationId === String(notification.id) ? (
+                          <Text style={{ color: '#DC2626', fontSize: 11, marginTop: 4 }}>{friendRequestError}</Text>
+                        ) : null}
+                      </View>
+                    ) : null}
+
+                    {notification.type === 'friend_request_accepted' ? (
+                      <View style={styles.inlineActions}>
+                        <Text style={{ color: '#22C55E', fontWeight: '600', fontSize: 12 }}>
+                          You are now friends!
                         </Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => handleFriendRequestDecision(notification, 'reject')}
-                        style={styles.declineButton}
-                        disabled={processingFriendRequestNotificationId === String(notification.id)}
-                      >
-                        <Text style={styles.declineButtonText}>
-                          {processingFriendRequestNotificationId === String(notification.id) ? 'Ignoring...' : 'Ignore'}
-                        </Text>
-                      </Pressable>
-                    </View>
-                  ) : null}
+                      </View>
+                    ) : null}
 
-                  {!notification.read && (notification.type === 'ride_cancelled' || notification.type === 'passenger_removed') ? (
-                    <View style={styles.warnStrip}>
-                      <Text style={styles.warnStripText}>
-                        {notification.type === 'ride_cancelled' ? 'Ride was cancelled' : 'You were removed'}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-              </Pressable>
+                    {!notification.read && (notification.type === 'ride_cancelled' || notification.type === 'passenger_removed') ? (
+                      <View style={styles.warnStrip}>
+                        <Text style={styles.warnStripText}>
+                          {notification.type === 'ride_cancelled' ? 'Ride was cancelled' : 'You were removed'}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                </Pressable>
+                <Pressable
+                  onPress={() => deleteNotification(notification.id)}
+                  style={{ position: 'absolute', top: 8, right: 8, zIndex: 10, padding: 4 }}
+                  hitSlop={10}
+                >
+                  <Ionicons name="close" size={18} color="#BDBDBD" />
+                </Pressable>
+              </View>
             );
           })}
         </ScrollView>

@@ -17,7 +17,7 @@ export interface UserSnippet {
 
 export interface NotificationItem {
   id: string;
-  type: 'join_request' | 'join_request_sent' | 'friend_request' | 'ride_update' | 'message' | 'ride_cancelled' | 'passenger_removed' | 'payment_request' | 'ride_edited';
+  type: 'join_request' | 'join_request_sent' | 'friend_request' | 'friend_request_accepted' | 'ride_update' | 'message' | 'ride_cancelled' | 'passenger_removed' | 'payment_request' | 'ride_edited';
   title: string;
   body: string;
   time: string;
@@ -99,6 +99,7 @@ type AppContextValue = {
   refreshNotifications: () => Promise<void>;
   updateNotificationPreferences: (next: Partial<NotificationPreferences>) => void;
   addNotification: (notification: Omit<NotificationItem, 'id' | 'time' | 'read'>) => void;
+  deleteNotification: (notificationId: string) => void;
   groupChats: GroupChat[];
   setGroupChats: React.Dispatch<React.SetStateAction<GroupChat[]>>;
   sendGroupMessage: (chatId: string, text: string, senderId: string) => void;
@@ -202,14 +203,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       actionTarget = 'user_profile';
     }
 
+    let title = 'Ride update';
+    if (type === 'join_request') title = 'New join request for your ride';
+    else if (type === 'join_request_sent') title = 'Request sent';
+    else if (type === 'friend_request') title = 'New friend request';
+    else if (type === 'friend_request_accepted') title = 'Friend request accepted';
+
     return {
       id: String(raw.notification_id ?? raw.id ?? `n_${Date.now()}`),
       type,
-      title: type === 'join_request'
-        ? 'New join request for your ride'
-        : type === 'join_request_sent'
-          ? 'Request sent'
-          : 'Ride update',
+      title,
       body: raw.message || '',
       time: formatRelativeTime(raw.created_at),
       read: Boolean(raw.is_read),
@@ -251,10 +254,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const unreadCount = useMemo(() => notifications.filter((notification) => !notification.read).length, [notifications]);
 
 
-  const markAllRead = useCallback(() => {
-    notificationsAPI.markAllRead().catch(() => undefined);
-    setNotifications((previous) => previous.map((notification) => ({ ...notification, read: true })));
-  }, []);
+  const markAllRead = useCallback(async () => {
+    try {
+      await notificationsAPI.markAllRead();
+      await refreshNotifications();
+    } catch {
+      // fallback: mark all as read locally if API fails
+      setNotifications((previous) => previous.map((notification) => ({ ...notification, read: true })));
+    }
+  }, [refreshNotifications]);
 
   const markRead = useCallback((notificationId: string) => {
     notificationsAPI.markAsRead(notificationId).catch(() => undefined);
@@ -264,6 +272,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       )
     );
   }, []);
+
 
   const addNotification = useCallback((notification: Omit<NotificationItem, 'id' | 'time' | 'read'>) => {
     if (shouldMuteNotificationType(notification.type)) {
@@ -279,6 +288,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     setNotifications((previous) => [newNotification, ...previous]);
   }, [shouldMuteNotificationType]);
+
+  const deleteNotification = useCallback(async (notificationId: string) => {
+    try {
+      await notificationsAPI.deleteNotification(notificationId);
+      setNotifications((previous) => previous.filter((n) => n.id !== notificationId));
+    } catch (err: any) {
+      // Ignore 404 (not found) errors, remove locally anyway
+      if (err?.response?.status === 404) {
+        setNotifications((previous) => previous.filter((n) => n.id !== notificationId));
+      }
+      // fallback: remove locally if API fails for any other reason
+      else {
+        setNotifications((previous) => previous.filter((n) => n.id !== notificationId));
+      }
+    }
+  }, []);
 
   const sendGroupMessage = useCallback((chatId: string, text: string, senderId: string) => {
     const trimmed = text.trim();
@@ -346,6 +371,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+
   const value = useMemo(
     () => ({
       darkMode,
@@ -362,6 +388,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       refreshNotifications,
       updateNotificationPreferences,
       addNotification,
+      deleteNotification,
       groupChats,
       setGroupChats,
       sendGroupMessage,
@@ -372,6 +399,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }),
     [
       addNotification,
+      deleteNotification,
       blockUser,
       blockedUsers,
       currentUserAvatar,

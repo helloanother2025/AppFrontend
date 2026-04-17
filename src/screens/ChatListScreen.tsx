@@ -40,13 +40,23 @@ export function ChatListScreen() {
                 name: participant.name,
                 username: participant.username,
                 avatar: participant.avatar_url ?? participant.avatar,
+                rideStatus: participant.ride_status,
               }));
 
               const otherParticipants = participants.filter((participant: { id: string }) => participant.id !== String(user?.id));
 
+              // Prefer ride_status from backend if present, else fallback to chat.state
+              let rideStatus = null;
+              if (details?.participants?.length > 0 && chat.type === 'ride') {
+                // Find current user's ride_status if available
+                const myParticipant = participants.find((p: any) => p.id === String(user?.id));
+                rideStatus = myParticipant?.rideStatus || null;
+              }
+
               return {
                 id: String(chat.chat_id ?? chat.id),
                 type: chat.type,
+                state: rideStatus || chat.state || 'active',
                 rideName: chat.ride_name || (chat.type === 'private' ? otherParticipants[0]?.name || 'Direct chat' : `Ride ${chat.ride_id ?? chat.chat_id}`),
                 lastMessage: chat.last_message || '',
                 lastTime: chat.last_message_time || '',
@@ -96,13 +106,28 @@ export function ChatListScreen() {
   const filteredGroups = useMemo(
     () =>
       chatsToShow
-        .filter((chat) => String(chat.type ?? 'ride') === 'ride')
+        .filter((chat) => {
+          // Only group chats (rides)
+          if (String(chat.type ?? 'ride') !== 'ride') return false;
+          // Find creator (participant with matching user id)
+          const creator = (chat.participants || []).find(
+            (p: any) => p.id === String(user?.id)
+          );
+          // If I am creator, check if there was ever any non-creator participant
+          if (creator) {
+            // If there is a property like chat.everHadJoiner, prefer it (future-proof)
+            // Otherwise, keep if there is at least one non-creator participant (even if removed)
+            // For now, if participants array ever had >1, keep
+            if ((chat.participants || []).length <= 1) return false;
+          }
+          return true;
+        })
         .filter(
           (chat) =>
             (chat.rideName ?? '').toLowerCase().includes(searchQ.toLowerCase()) ||
             (chat.lastMessage ?? '').toLowerCase().includes(searchQ.toLowerCase())
         ),
-    [chatsToShow, searchQ]
+    [chatsToShow, searchQ, user?.id]
   );
 
   const filteredDirect = useMemo(
@@ -118,6 +143,43 @@ export function ChatListScreen() {
   );
 
   const renderChatCard = (chat: any, icon: 'people' | 'chatbubble') => {
+    // Status badge rendering for group chats
+    let statusBadge = null;
+    if (chat.type === 'ride') {
+      let badgeColor = '#E5E7EB';
+      let badgeText = '';
+      // Map backend statuses to only: Active, Inactive, Archived
+      let mappedState = 'active';
+      switch (chat.state) {
+        case 'started':
+        case 'active':
+          mappedState = 'active'; break;
+        case 'completed':
+        case 'cancelled':
+        case 'expired':
+        case 'unactive':
+          mappedState = 'inactive'; break;
+        case 'archived':
+        case 'read_only':
+        case 'locked':
+          mappedState = 'archived'; break;
+        default:
+          mappedState = 'active'; break;
+      }
+      switch (mappedState) {
+        case 'active':
+          badgeColor = colors.brand; badgeText = 'Active'; break;
+        case 'inactive':
+          badgeColor = '#A3A3A3'; badgeText = 'Inactive'; break;
+        case 'archived':
+          badgeColor = '#D1D5DB'; badgeText = 'Archived'; break;
+      }
+      statusBadge = (
+        <View style={{ backgroundColor: badgeColor, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, alignSelf: 'flex-start', marginBottom: 2 }}>
+          <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{badgeText}</Text>
+        </View>
+      );
+    }
     const otherParticipants = (chat.participants || []).filter((participant: any) => participant.id !== String(user?.id ?? demoCurrentUser.id));
 
     return (
@@ -148,6 +210,7 @@ export function ChatListScreen() {
             <Text style={[styles.chatTitle, { color: textPrimary }]} numberOfLines={1}>{chat.rideName}</Text>
             <Text style={[styles.chatTime, { color: textSecondary }]}>{chat.lastTime}</Text>
           </View>
+          {statusBadge}
           <Text style={[styles.chatMeta, { color: textSecondary }]} numberOfLines={1}>
             {otherParticipants.map((participant: { name: string }) => participant.name.split(' ')[0]).join(', ')}
           </Text>

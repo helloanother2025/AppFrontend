@@ -1,3 +1,6 @@
+
+// ...existing imports...
+import { useCallback } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { router } from 'expo-router';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -15,6 +18,36 @@ import { currentUser } from '../utils/rideMapper';
 type ProfileTab = 'info' | 'rides' | 'friends';
 
 export function ProfileScreen() {
+  // Add Friends modal state and logic (move up for useEffect ordering)
+  const [showAddFriendsModal, setShowAddFriendsModal] = useState(false);
+  const [addFriendsSearch, setAddFriendsSearch] = useState('');
+  const [addFriendsResults, setAddFriendsResults] = useState<any[]>([]);
+  const [addFriendsLoading, setAddFriendsLoading] = useState(false);
+  const [addFriendStatus, setAddFriendStatus] = useState<{ [userId: string]: 'idle' | 'loading' | 'sent' }>({});
+
+  // Requests modal data
+  const [receivedRequests, setReceivedRequests] = useState<any[]>([]);
+  const [sentRequests, setSentRequests] = useState<any[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
+
+  // Fetch requests when modal opens
+  useEffect(() => {
+    if (!showAddFriendsModal) return;
+    setRequestsLoading(true);
+    Promise.all([
+      friendsAPI.getReceivedRequests(),
+      friendsAPI.getSentRequests(),
+    ])
+      .then(([received, sent]) => {
+        setReceivedRequests(Array.isArray(received) ? received : []);
+        setSentRequests(Array.isArray(sent) ? sent : []);
+      })
+      .catch(() => {
+        setReceivedRequests([]);
+        setSentRequests([]);
+      })
+      .finally(() => setRequestsLoading(false));
+  }, [showAddFriendsModal]);
   const {
     currentUserAvatar,
     setCurrentUserAvatar,
@@ -38,6 +71,62 @@ export function ProfileScreen() {
   const [friendList, setFriendList] = useState<any[]>([]);
   const [receivedFeedback, setReceivedFeedback] = useState<any[]>([]);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+
+  // Requests modal tab state
+  const [requestsTab, setRequestsTab] = useState<'received' | 'sent'>('received');
+
+
+  const searchUsers = useCallback(async (query: string) => {
+    setAddFriendsLoading(true);
+    try {
+      const res = await usersAPI.searchUsers(query);
+      setAddFriendsResults(Array.isArray(res) ? res : res?.users || []);
+    } catch {
+      setAddFriendsResults([]);
+    } finally {
+      setAddFriendsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!showAddFriendsModal) return;
+    if (!addFriendsSearch) {
+      setAddFriendsResults([]);
+      return;
+    }
+    const timeout = setTimeout(() => {
+      searchUsers(addFriendsSearch);
+    }, 400);
+    return () => clearTimeout(timeout);
+  }, [addFriendsSearch, showAddFriendsModal, searchUsers]);
+
+  const refetchRequests = async () => {
+    setRequestsLoading(true);
+    try {
+      const [received, sent] = await Promise.all([
+        friendsAPI.getReceivedRequests(),
+        friendsAPI.getSentRequests(),
+      ]);
+      setReceivedRequests(Array.isArray(received) ? received : []);
+      setSentRequests(Array.isArray(sent) ? sent : []);
+    } catch {
+      setReceivedRequests([]);
+      setSentRequests([]);
+    } finally {
+      setRequestsLoading(false);
+    }
+  };
+
+  const handleSendFriendRequest = async (userId: string) => {
+    setAddFriendStatus((prev) => ({ ...prev, [userId]: 'loading' }));
+    try {
+      await friendsAPI.sendFriendRequest(userId);
+      setAddFriendStatus((prev) => ({ ...prev, [userId]: 'sent' }));
+      await refetchRequests();
+    } catch {
+      setAddFriendStatus((prev) => ({ ...prev, [userId]: 'idle' }));
+    }
+  };
 
   useEffect(() => {
     setBio((liveUser as any).bio || '');
@@ -434,13 +523,83 @@ export function ProfileScreen() {
                   </Pressable>
                 ))}
 
-                <Pressable style={[styles.addFriendsButton, { borderColor: border, backgroundColor: darkMode ? surfaceMuted : '#FFFFFF' }]}> 
-                  <Text style={[styles.addFriendsText, { color: textSecondary }]}>+ Add friends</Text>
+                <Pressable
+                  style={[styles.addFriendsButton, { borderColor: border, backgroundColor: darkMode ? surfaceMuted : '#FFFFFF' }]}
+                  onPress={() => setShowAddFriendsModal(true)}
+                >
+                  <Text style={[styles.addFriendsText, { color: textSecondary }]}>Requests</Text>
                 </Pressable>
               </View>
             ) : null}
           </View>
         </ScrollView>
+
+        {/* Requests Modal */}
+        <Modal
+          visible={!!showAddFriendsModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowAddFriendsModal(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={[styles.addFriendsSheet, { backgroundColor: card }]}> 
+              <View style={[styles.sheetGrabber, { backgroundColor: border }]} />
+              <Text style={[styles.sheetTitle, { color: textPrimary }]}>Friend Requests</Text>
+              <View style={{ flexDirection: 'row', marginBottom: 16 }}>
+                <Pressable
+                  style={{ flex: 1, alignItems: 'center', paddingVertical: 8, borderBottomWidth: 2, borderBottomColor: requestsTab === 'received' ? '#8B5CF6' : 'transparent' }}
+                  onPress={() => setRequestsTab('received')}
+                >
+                  <Text style={{ color: requestsTab === 'received' ? textPrimary : textSecondary, fontWeight: requestsTab === 'received' ? '600' : '400' }}>Received</Text>
+                </Pressable>
+                <Pressable
+                  style={{ flex: 1, alignItems: 'center', paddingVertical: 8, borderBottomWidth: 2, borderBottomColor: requestsTab === 'sent' ? '#8B5CF6' : 'transparent' }}
+                  onPress={() => setRequestsTab('sent')}
+                >
+                  <Text style={{ color: requestsTab === 'sent' ? textPrimary : textSecondary, fontWeight: requestsTab === 'sent' ? '600' : '400' }}>Sent</Text>
+                </Pressable>
+              </View>
+              <ScrollView style={{ maxHeight: 320 }}>
+                {requestsLoading ? (
+                  <Text style={{ color: textSecondary, marginTop: 16 }}>Loading...</Text>
+                ) : requestsTab === 'received' ? (
+                  receivedRequests.length === 0 ? (
+                    <Text style={{ color: textSecondary, marginTop: 16 }}>No received requests.</Text>
+                  ) : (
+                    receivedRequests.map((req, idx) => (
+                      <View key={req.id || `received-${idx}`} style={styles.suggestedUserRow}>
+                        <UserAvatar name={req.sender?.name || req.name} size={36} source={req.sender?.avatar || req.avatar || undefined} />
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                          <Text style={{ color: textPrimary, fontWeight: '600' }}>{req.sender?.name || req.name}</Text>
+                          <Text style={{ color: textSecondary, fontSize: 12 }}>@{req.sender?.username || req.username}</Text>
+                        </View>
+                        {/* Accept/Decline buttons can be added here */}
+                      </View>
+                    ))
+                  )
+                ) : (
+                  sentRequests.length === 0 ? (
+                    <Text style={{ color: textSecondary, marginTop: 16 }}>No sent requests.</Text>
+                  ) : (
+                    sentRequests.map((req, idx) => (
+                      <View key={req.id || `sent-${idx}`} style={styles.suggestedUserRow}>
+                        <UserAvatar name={req.receiver?.name || req.name} size={36} source={req.receiver?.avatar || req.avatar || undefined} />
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                          <Text style={{ color: textPrimary, fontWeight: '600' }}>{req.receiver?.name || req.name}</Text>
+                          <Text style={{ color: textSecondary, fontSize: 12 }}>@{req.receiver?.username || req.username}</Text>
+                        </View>
+                        <Text style={{ color: '#8B5CF6', fontWeight: '600' }}>Pending</Text>
+                      </View>
+                    ))
+                  )
+                )}
+              </ScrollView>
+              <Pressable onPress={() => setShowAddFriendsModal(false)} style={styles.sheetCancelButton}>
+                <Text style={[styles.sheetCancelText, { color: textSecondary }]}>Close</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
 
         <Modal visible={showAvatarOptions} transparent animationType="slide" onRequestClose={() => setShowAvatarOptions(false)}>
           <View style={styles.modalBackdrop}>
@@ -781,6 +940,38 @@ const styles = StyleSheet.create({
   },
   addFriendsText: {
     fontSize: 12,
+  },
+  addFriendsSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    minHeight: 320,
+    maxHeight: 520,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    marginBottom: 12,
+    backgroundColor: '#F5F5F7',
+  },
+  suggestedUserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 2,
+    gap: 8,
+  },
+  addFriendButton: {
+    borderRadius: 10,
+    backgroundColor: '#F5F3FF',
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 90,
   },
   modalBackdrop: {
     flex: 1,

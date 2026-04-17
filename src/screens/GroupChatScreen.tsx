@@ -26,23 +26,35 @@ export function GroupChatScreen() {
   const [remoteParticipants, setRemoteParticipants] = useState<any[]>([]);
   const [remoteMessages, setRemoteMessages] = useState<any[]>([]);
   const [remoteRideName, setRemoteRideName] = useState<string>('Group chat');
+  const [remoteRideStatus, setRemoteRideStatus] = useState<string>('active');
   const [loadingRemoteChat, setLoadingRemoteChat] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
   const params = useLocalSearchParams<{ chatId?: string; id?: string }>();
   const resolvedChatId = String(params.id || params.chatId || '');
   const chat = useMemo(() => groupChats.find((item) => String(item.id) === resolvedChatId) ?? groupChats[0], [resolvedChatId, groupChats]);
+
+  // Determine chat state: fallback to 'active' (no state property on chat)
+  const chatState = 'active';
   const activeUserId = String(user?.id ?? currentUser.id);
 
   const participants = isDemoMode ? (chat?.participants ?? []) : remoteParticipants;
   const messages = isDemoMode ? (chat?.messages ?? []) : remoteMessages;
   const rideName = isDemoMode ? (chat?.rideName || 'Group chat') : remoteRideName;
 
+  const myParticipant = participants.find((p: any) => p.id === activeUserId);
+  // Use membershipStatus if available, else fallback to rideStatus
+  const isExcluded = myParticipant && ['cancelled', 'removed', 'rejected', 'left', 'removed_passenger'].includes(myParticipant.membershipStatus || myParticipant.rideStatus);
+  // Use backend ride status for read-only logic
+  const rideStatus = isDemoMode ? 'active' : remoteRideStatus;
+  const isReadOnly = ['completed', 'cancelled'].includes(rideStatus) || !!isExcluded;
+
   const loadRemoteChat = useCallback(async () => {
     if (isDemoMode || !resolvedChatId) {
       setRemoteParticipants([]);
       setRemoteMessages([]);
       setRemoteRideName(chat?.rideName || 'Group chat');
+      setRemoteRideStatus('active');
       return;
     }
 
@@ -58,6 +70,8 @@ export function GroupChatScreen() {
         name: participant.name || 'User',
         username: participant.username || 'user',
         avatar: participant.avatar_url ?? participant.avatar,
+        rideStatus: participant.ride_status,
+        membershipStatus: participant.membership_status, // backend may provide this
       }));
 
       const normalizedMessages = (messageResponse?.messages ?? []).map((message: any) => ({
@@ -72,10 +86,12 @@ export function GroupChatScreen() {
       setRemoteParticipants(normalizedParticipants);
       setRemoteMessages(normalizedMessages);
       setRemoteRideName(chat?.rideName || chatResponse?.chat?.title || `Ride Chat #${resolvedChatId}`);
+      setRemoteRideStatus(chatResponse?.rideStatus || chatResponse?.ride_status || 'active');
     } catch {
       setRemoteParticipants([]);
       setRemoteMessages([]);
       setRemoteRideName(chat?.rideName || 'Group chat');
+      setRemoteRideStatus('active');
     } finally {
       setLoadingRemoteChat(false);
     }
@@ -102,6 +118,7 @@ export function GroupChatScreen() {
   }, [messages.length]);
 
   const handleSend = async () => {
+    if (isReadOnly) return;
     const chatIdToUse = resolvedChatId || chat?.id;
     if (!chatIdToUse) return;
     const trimmed = messageText.trim();
@@ -157,6 +174,12 @@ export function GroupChatScreen() {
 
   return (
     <ScreenShell scroll={false}>
+      {/* Read-only banner */}
+      {isReadOnly && (
+        <View style={{ backgroundColor: '#FFF3CD', padding: 10, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#FFD966' }}>
+          <Text style={{ color: '#856404', fontWeight: '600', fontSize: 13 }}>Ride completed – this chat is now read-only</Text>
+        </View>
+      )}
       <View style={[styles.header, { backgroundColor: card, borderBottomColor: border }]}> 
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="chevron-back" size={22} color={textPrimary} />
@@ -289,19 +312,20 @@ export function GroupChatScreen() {
           })}
         </ScrollView>
 
-        <View style={[styles.composer, { backgroundColor: card, borderTopColor: border }]}> 
+        <View style={[styles.composer, { backgroundColor: card, borderTopColor: border, opacity: isReadOnly ? 0.5 : 1 }]}> 
           <TextInput
             value={messageText}
             onChangeText={setMessageText}
-            placeholder="Message the group..."
+            placeholder={isReadOnly ? "Chat is read-only" : "Message the group..."}
             placeholderTextColor="#9CA3AF"
             style={[styles.composerInput, { backgroundColor: inputBg, borderColor: border, color: textPrimary }]}
             multiline
+            editable={!isReadOnly}
           />
           <Pressable
             onPress={handleSend}
-            disabled={!messageText.trim()}
-            style={[styles.sendButton, { backgroundColor: messageText.trim() ? colors.brand : darkMode ? '#2A2A2A' : '#E5E5E5' }]}
+            disabled={!messageText.trim() || isReadOnly}
+            style={[styles.sendButton, { backgroundColor: (!messageText.trim() || isReadOnly) ? (darkMode ? '#2A2A2A' : '#E5E5E5') : colors.brand }]}
           >
             <Ionicons name="send" size={16} color="#FFFFFF" />
           </Pressable>
@@ -331,7 +355,20 @@ export function GroupChatScreen() {
                       <Text style={[styles.memberName, { color: textPrimary }]}>{participant.name}</Text>
                       {String(participant.id) === activeUserId ? <Text style={styles.youPill}>You</Text> : null}
                     </View>
-                    <Text style={[styles.memberUsername, { color: textSecondary }]}>@{participant.username}</Text>
+                    <View style={styles.memberSubtitleRow}>
+                      <Text style={[styles.memberUsername, { color: textSecondary }]}>@{participant.username}</Text>
+                      {participant.rideStatus && (
+                        <Text style={[
+                          styles.memberStatusPill, 
+                          { 
+                            backgroundColor: participant.rideStatus === 'creator' || participant.rideStatus === 'accepted' ? 'rgba(46,196,182,0.1)' : 'rgba(232,57,80,0.1)',
+                            color: participant.rideStatus === 'creator' || participant.rideStatus === 'accepted' ? '#2EC4B6' : '#E83950',
+                          }
+                        ]}>
+                          {participant.rideStatus}
+                        </Text>
+                      )}
+                    </View>
                   </View>
                   {String(participant.id) !== activeUserId ? (
                     <View style={styles.memberActions}>
@@ -643,7 +680,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   sheetList: {
-    flex: 1,
+    flexGrow: 0,
+    flexShrink: 1,
   },
   sheetListContent: {
     gap: 10,
@@ -677,8 +715,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   memberUsername: {
-    marginTop: 1,
     fontSize: 11,
+  },
+  memberSubtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  memberStatusPill: {
+    fontSize: 9,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
+    fontWeight: '600',
+    overflow: 'hidden',
   },
   memberCallButton: {
     width: 32,
