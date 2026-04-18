@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { router } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
 import {
   Alert,
   Pressable,
@@ -152,7 +152,7 @@ export function CreateRideScreen() {
 
 
   const [departureType, setDepartureType] = useState<'now' | 'schedule'>('schedule');
-  const [scheduledDate, setScheduledDate] = useState('2026-04-16');
+  const [scheduledDate, setScheduledDate] = useState(() => toDateInputValue(new Date()));
   const [scheduledTime, setScheduledTime] = useState('08:30');
 
   const [transport, setTransport] = useState<TransportMode>('Car');
@@ -167,6 +167,45 @@ export function CreateRideScreen() {
   const [savedDraft, setSavedDraft] = useState<CreateRideDraft | null>(null);
 
   const pastRides = useMemo(() => myRides.slice(0, 3), [myRides]);
+
+  const today = new Date();
+  const resetForm = useCallback(() => {
+    setStep(1);
+    setShowRoutePicker(false);
+    setFromInput('');
+    setToInput('');
+    setFromLocation(null);
+    setToLocation(null);
+    setDraftFrom(null);
+    setDraftTo(null);
+    setRouteMetrics(null);
+    setDepartureType('schedule');
+    setScheduledDate(toDateInputValue(today));
+    setScheduledTime('08:30');
+    setTransport('Car');
+    setTransportDetail('');
+    setSeats(2);
+    setPaymentSplit('equal');
+    setFareSkip(false);
+    setFare(500);
+    setGenderPref('Any');
+    setNotes('');
+    setSavedDraft(null);
+  }, []);
+
+  // When the screen is re-focused after a successful ride creation (step 5),
+  // reset everything so the next session starts clean from step 1.
+  useFocusEffect(
+    useCallback(() => {
+      setStep((current) => {
+        if (current === 5) {
+          resetForm();
+          return 1;
+        }
+        return current;
+      });
+    }, [resetForm])
+  );
 
 
   const displayFrom = fromLocation?.shortName || fromInput || 'Starting location';
