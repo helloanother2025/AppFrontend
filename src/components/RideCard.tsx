@@ -96,7 +96,9 @@ export function RideCard({
 
           <View style={styles.timeRow}>
             <Ionicons name="time-outline" size={12} color={textSecondary} />
-            <Text style={[styles.timeText, { color: textSecondary }]}>{formatRideDate(ride.departureTime).time}</Text>
+            <Text style={[styles.timeText, { color: textSecondary }]}>
+              {formatRideDate(ride.departureTime).day} at {formatRideDate(ride.departureTime).time}
+            </Text>
           </View>
 
         </View>
