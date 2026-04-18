@@ -176,6 +176,9 @@ export function CreateRideScreen() {
   const scheduledDateValue = parseScheduledDateTime(scheduledDate, '12:00');
   const scheduledTimeValue = parseScheduledDateTime(scheduledDate, scheduledTime);
   const step1Valid = Boolean(fromLocation && toLocation);
+  const scheduledAt = departureType === 'schedule' ? parseScheduledDateTime(scheduledDate, scheduledTime) : null;
+  const scheduleValid = departureType === 'now' || (scheduledAt !== null && scheduledAt.getTime() > Date.now());
+  const step2Valid = scheduleValid;
   const perSeatFare = Math.max(0, Math.round(fare / Math.max(1, seats)));
 
   const currentTransportPlaceholder = useMemo(
@@ -204,7 +207,8 @@ export function CreateRideScreen() {
       if (departureType === 'schedule') {
         const scheduledAt = parseScheduledDateTime(scheduledDate, scheduledTime);
         if (scheduledAt.getTime() <= Date.now()) {
-          Alert.alert('Invalid schedule', 'Please choose a future date and time for departure.');
+          // Should never reach here since step 2 blocks it, but guard anyway
+          Alert.alert('Invalid schedule', 'Please go back and choose a future date and time.');
           return;
         }
       }
@@ -518,8 +522,20 @@ export function CreateRideScreen() {
               ) : null}
 
               {departureType === 'schedule' && scheduledDate && scheduledTime ? (
-                <View style={[styles.departingTag, { backgroundColor: surfaceMuted, borderColor: line }]}>
-                  <Text style={[styles.departingTagText, { color: textPrimary }]}>Departing: {displayTime}</Text>
+                <View
+                  style={[
+                    styles.departingTag,
+                    {
+                      backgroundColor: scheduleValid ? surfaceMuted : 'rgba(220,38,38,0.07)',
+                      borderColor: scheduleValid ? line : '#FCA5A5',
+                    },
+                  ]}
+                >
+                  <Text style={[styles.departingTagText, { color: scheduleValid ? textPrimary : '#DC2626' }]}>
+                    {scheduleValid
+                      ? `Departing: ${displayTime}`
+                      : `⚠ Pick valid date/time`}
+                  </Text>
                 </View>
               ) : null}
             </View>
@@ -758,7 +774,7 @@ export function CreateRideScreen() {
               <NavButtons 
                 onBack={goBack} 
                 onNext={goNext} 
-                nextDisabled={step === 1 && !step1Valid}
+                nextDisabled={step === 1 && !step1Valid || step === 2 && !step2Valid}
                 nextLabel={step === 4 ? "Publish Ride" : "Next"}
                 darkMode={darkMode}
               />
