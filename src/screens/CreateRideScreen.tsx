@@ -67,6 +67,16 @@ const transportOptions: { mode: TransportMode; emoji: string; label: string; pla
   { mode: 'Other', emoji: '🚕', label: 'Other', placeholder: 'Describe the transport...' },
 ];
 
+const seatLimits: Record<TransportMode, number> = {
+  Car: 4,
+  CNG: 2,
+  Bus: 99,
+  Bike: 1,
+  Microbus: 7,
+  Rickshaw: 1,
+  Other: 12,
+};
+
 const genderOptions: GenderPreference[] = ['Any', 'Male', 'Female'];
 const CREATE_RIDE_DRAFT_KEY = 'createRideDraft';
 
@@ -278,7 +288,8 @@ export function CreateRideScreen() {
     setScheduledTime(draft.scheduledTime || '08:30');
     setTransport(draft.transport || 'Car');
     setTransportDetail(draft.transportDetail || '');
-    setSeats(Math.min(12, Math.max(1, draft.seats || 2)));
+    const draftTransport = draft.transport || 'Car';
+    setSeats(Math.min(seatLimits[draftTransport] ?? 12, Math.max(1, draft.seats || 2)));
     setPaymentSplit(draft.paymentSplit || 'equal');
     setFareSkip(Boolean(draft.fareSkip));
     setFare(Number.isFinite(draft.fare) ? draft.fare : 500);
@@ -533,6 +544,7 @@ export function CreateRideScreen() {
                     onPress={() => {
                       setTransport(option.mode);
                       setTransportDetail('');
+                      setSeats((prev) => Math.min(prev, seatLimits[option.mode]));
                     }}
                         style={[styles.transportOption, { backgroundColor: surface, borderColor: line }, transport === option.mode ? styles.transportOptionSelected : null]}
                   >
@@ -576,17 +588,31 @@ export function CreateRideScreen() {
                 <View style={styles.seatLabelRow}>
                   <Ionicons name="people-outline" size={18} color="#6B7280" />
                   <Text style={styles.seatLabel}>Available seats</Text>
+                  {transport !== 'Bus' ? (
+                    <Text style={styles.seatLimitBadge}>max {seatLimits[transport]}</Text>
+                  ) : (
+                    <Text style={styles.seatLimitBadge}>no limit</Text>
+                  )}
                 </View>
 
                 <View style={styles.seatAdjustRow}>
-                  <Pressable onPress={() => setSeats((prev) => Math.max(1, prev - 1))} style={styles.adjustButton}>
+                  <Pressable
+                    onPress={() => setSeats((prev) => Math.max(1, prev - 1))}
+                    style={[styles.adjustButton, seats <= 1 ? styles.adjustButtonDisabled : null]}
+                  >
                     <Text style={styles.adjustButtonText}>-</Text>
                   </Pressable>
                   <Text style={styles.seatValue}>{seats}</Text>
-                  <Pressable onPress={() => setSeats((prev) => Math.min(12, prev + 1))} style={styles.adjustButton}>
+                  <Pressable
+                    onPress={() => setSeats((prev) => Math.min(seatLimits[transport], prev + 1))}
+                    style={[styles.adjustButton, seats >= seatLimits[transport] ? styles.adjustButtonDisabled : null]}
+                  >
                     <Text style={styles.adjustButtonText}>+</Text>
                   </Pressable>
                 </View>
+                {seats >= seatLimits[transport] && transport !== 'Bus' ? (
+                  <Text style={styles.seatLimitHint}>Maximum capacity for {transport} reached</Text>
+                ) : null}
               </View>
 
               <View style={[styles.fareCard, { backgroundColor: surface, borderColor: line }]}> 
@@ -1139,14 +1165,29 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 16,
     padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 10,
   },
   seatLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 8,
+  },
+  seatLimitBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.brand,
+    backgroundColor: 'rgba(232, 57, 80, 0.10)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    overflow: 'hidden',
+    marginLeft: 'auto',
+  },
+  seatLimitHint: {
+    fontSize: 11,
+    color: colors.brand,
+    fontWeight: '500',
   },
   seatLabel: {
     color: '#374151',
@@ -1166,6 +1207,9 @@ const styles = StyleSheet.create({
     borderColor: '#D1D5DB',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  adjustButtonDisabled: {
+    opacity: 0.3,
   },
   adjustButtonText: {
     color: '#4B5563',

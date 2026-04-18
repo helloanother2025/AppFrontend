@@ -26,22 +26,6 @@ import { getParsedRouteCoords, getRouteDistanceKm, getRouteMatchMetrics } from '
 
 
 export function RideDetailsScreen() {
-    const [groupChatId, setGroupChatId] = useState<string | null>(null);
-
-    // Fetch group chat id for this ride
-    useEffect(() => {
-      async function fetchGroupChatId() {
-        if (!rideId || isDemoMode) return;
-        try {
-          const chats = await chatAPI.getChats();
-          const rideChat = (chats?.chats || []).find((c: any) => String(c.ride_id) === String(rideId) && c.type === 'ride');
-          if (rideChat) setGroupChatId(String(rideChat.chat_id));
-        } catch {
-          setGroupChatId(null);
-        }
-      }
-      fetchGroupChatId();
-    }, [rideId, isDemoMode]);
   const { darkMode, isDemoMode } = useAppContext();
   const { searchData } = useSearch();
   const { user: currentUser } = useUser();
@@ -56,7 +40,8 @@ export function RideDetailsScreen() {
   } = useJoinRequests();
 
   const { rideId } = useLocalSearchParams<{ rideId: string }>();
-  
+
+  const [groupChatId, setGroupChatId] = useState<string | null>(null);
   const [showPassengers, setShowPassengers] = useState(false);
   const [showFareBreakdown, setShowFareBreakdown] = useState(false);
   const [showMapSheet, setShowMapSheet] = useState(false);
