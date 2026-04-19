@@ -43,6 +43,7 @@ export function HomeScreen() {
     joinedRides, 
     rides,
     selectRide,
+    getRideDetails,
     fetchMyRides, 
     fetchJoinedRides, 
     fetchAvailableRides,
@@ -291,8 +292,8 @@ export function HomeScreen() {
                     </View>
 
                     <Pressable
-                      onPress={() => {
-                        selectRide(ongoingRide);
+                      onPress={async () => {
+                        await getRideDetails(ongoingRide.id);
                         router.push({ pathname: '/(app)/ride-details', params: { rideId: String(ongoingRide.id) } });
                       }}
                       style={[styles.cardContainer, { backgroundColor: card, borderColor: border }]}
@@ -339,8 +340,8 @@ export function HomeScreen() {
                     </View>
 
                     <Pressable
-                      onPress={() => {
-                        selectRide(upcomingRide);
+                      onPress={async () => {
+                        await getRideDetails(upcomingRide.id);
                         router.push({ pathname: '/(app)/ride-details', params: { rideId: String(upcomingRide.id) } });
                       }}
                       style={[styles.cardContainer, { backgroundColor: card, borderColor: border }]}
@@ -509,8 +510,8 @@ export function HomeScreen() {
                     <Pressable
                       key={ride.id}
                       style={[styles.simpleRideCard, { backgroundColor: card, borderColor: border }]}
-                      onPress={() => {
-                        selectRide(ride);
+                      onPress={async () => {
+                        await getRideDetails(ride.id);
                         router.push({ pathname: '/(app)/ride-details', params: { rideId: String(ride.id) } });
                       }}
                     >

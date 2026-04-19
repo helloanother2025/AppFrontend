@@ -25,7 +25,7 @@ type GenderFilter = 'Any' | 'Male' | 'Female';
 export function DashboardScreen() {
   const { searchData, setSearchData, resetSearchData } = useSearch();
   const { darkMode, isDemoMode } = useAppContext();
-  const { rides, fetchAvailableRides, selectRide, loading } = useRide();
+  const { rides, fetchAvailableRides, selectRide, getRideDetails, loading } = useRide();
   const { user: currentUser } = useUser();
 
   const fromLocation = searchData.start;
@@ -494,12 +494,13 @@ export function DashboardScreen() {
               </View>
             ) : (
               <View style={styles.listWrap}>
+
                 {filteredRides.map((ride) => (
                   <RideCard
                     key={ride.id}
                     ride={ride}
-                    onPress={() => {
-                      selectRide(ride);
+                    onPress={async () => {
+                      await getRideDetails(ride.id);
                       router.push({ pathname: '/(app)/ride-details', params: { rideId: String(ride.id) } });
                     }}
                   />
