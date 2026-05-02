@@ -407,7 +407,7 @@ export function GroupChatScreen() {
                       >
                         <Ionicons name="ban-outline" size={13} color={isBlocked(participant.id) ? colors.brand : textSecondary} />
                       </Pressable>
-                      {!isDemoMode && isCreator && participant.rideStatus !== 'creator' ? (
+                      {!isDemoMode && isCreator && (String(participant.rideStatus || participant.role || '') !== 'creator') ? (
                         <Pressable
                           onPress={() => {
                             setShowParticipants(false);
