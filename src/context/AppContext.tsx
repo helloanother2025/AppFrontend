@@ -17,7 +17,7 @@ export interface UserSnippet {
 
 export interface NotificationItem {
   id: string;
-  type: 'join_request' | 'join_request_sent' | 'friend_request' | 'friend_request_accepted' | 'ride_update' | 'message' | 'ride_cancelled' | 'passenger_removed' | 'payment_request' | 'ride_edited';
+  type: 'join_request' | 'join_request_sent' | 'friend_request' | 'friend_request_accepted' | 'ride_update' | 'message' | 'ride_cancelled' | 'passenger_removed' | 'payment_request' | 'ride_edited' | 'panic_alert';
   title: string;
   body: string;
   time: string;
@@ -130,7 +130,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (notificationPreferences.muteChatNotifications && type === 'message') return true;
     if (
       notificationPreferences.muteRideUpdates &&
-      (type === 'ride_update' || type === 'ride_cancelled' || type === 'ride_edited' || type === 'passenger_removed')
+      (type === 'ride_update' || type === 'ride_cancelled' || type === 'ride_edited' || type === 'passenger_removed' || type === 'panic_alert')
     ) {
       return true;
     }
@@ -208,6 +208,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     else if (type === 'join_request_sent') title = 'Request sent';
     else if (type === 'friend_request') title = 'New friend request';
     else if (type === 'friend_request_accepted') title = 'Friend request accepted';
+    else if (type === 'panic_alert') title = 'Panic alert';
 
     return {
       id: String(raw.notification_id ?? raw.id ?? `n_${Date.now()}`),

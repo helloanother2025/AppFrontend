@@ -21,6 +21,7 @@ import { type TransportMode } from '../utils/rideMapper';
 import type { RouteMetrics } from '../types/map';
 import { colors } from '../theme';
 import { chatAPI } from '../api/chat';
+import { ridesAPI } from '../api/rides';
 import { getParsedRouteCoords, getRouteDistanceKm, getRouteMatchMetrics } from '../utils/routeMatcher';
 
 
@@ -47,6 +48,7 @@ export function RideDetailsScreen() {
   const [showMapSheet, setShowMapSheet] = useState(false);
   const [callingUser, setCallingUser] = useState<any>(null);
   const [routeMetrics, setRouteMetrics] = useState<RouteMetrics | null>(null);
+  const [panicSending, setPanicSending] = useState(false);
 
   const fetchDetails = useCallback(async () => {
     if (!rideId) return;
@@ -103,6 +105,10 @@ export function RideDetailsScreen() {
       </ScreenShell>
     );
   }
+
+  const canSendPanicAlert =
+    ride.status === 'started' &&
+    (Boolean(isMyRide) || myReqForThisRide?.status === 'accepted');
 
   const requestStart = searchData.start?.coords
     ? {
@@ -209,6 +215,27 @@ export function RideDetailsScreen() {
     }
   };
 
+  const handleSendPanicAlert = async () => {
+    try {
+      if (isDemoMode) {
+        Alert.alert('Demo mode', 'Panic alert is disabled in demo mode.');
+        return;
+      }
+
+      if (panicSending) {
+        return;
+      }
+
+      setPanicSending(true);
+      await ridesAPI.sendPanicAlert(ride.id);
+      Alert.alert('Panic alert sent', 'Other ride members have been notified.');
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to send panic alert');
+    } finally {
+      setPanicSending(false);
+    }
+  };
+
   return (
     <ScreenShell scroll={false}>
       <View style={[styles.header, { backgroundColor: cardBg, borderBottomColor: cardBorder }]}> 
@@ -231,6 +258,30 @@ export function RideDetailsScreen() {
               <Text style={{ color: '#FFF', fontWeight: '600' }}>Open Group Chat</Text>
             </Pressable>
           )}
+
+          {canSendPanicAlert ? (
+            <Pressable
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: 10,
+                borderColor: colors.brand,
+                borderWidth: 1,
+                borderRadius: 8,
+                padding: 10,
+                alignSelf: 'flex-start',
+                opacity: panicSending ? 0.6 : 1,
+              }}
+              onPress={handleSendPanicAlert}
+              disabled={panicSending}
+            >
+              <Ionicons name="alert-circle-outline" size={16} color={colors.brand} />
+              <Text style={{ color: colors.brand, fontWeight: '600' }}>
+                {panicSending ? 'Sending...' : 'Panic Alert'}
+              </Text>
+            </Pressable>
+          ) : null}
           {!isMyRide ? (
             <View style={styles.creatorRow}>
               <Pressable onPress={() => router.push({ pathname: '/(app)/user/[id]', params: { id: ride.creator.id } })}>

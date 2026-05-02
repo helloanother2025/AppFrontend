@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenShell } from '../components/ScreenShell';
 import { UserAvatar } from '../components/UserAvatar';
 import { InCallModal } from '../components/InCallModal';
+import { RemoveAndReportModal } from '../components/RemoveAndReportModal';
+import { ridesAPI } from '../api/rides';
 import { useAppContext } from '../context/AppContext';
 import { currentUser, type User } from '../utils/rideMapper';
 import { useUser } from '../context/UserContext';
@@ -27,7 +29,11 @@ export function GroupChatScreen() {
   const [remoteMessages, setRemoteMessages] = useState<any[]>([]);
   const [remoteRideName, setRemoteRideName] = useState<string>('Group chat');
   const [remoteRideStatus, setRemoteRideStatus] = useState<string>('active');
+  const [remoteRideId, setRemoteRideId] = useState<string | null>(null);
   const [loadingRemoteChat, setLoadingRemoteChat] = useState(false);
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [removalTarget, setRemovalTarget] = useState<any>(null);
+  const [removalLoading, setRemovalLoading] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
   const params = useLocalSearchParams<{ chatId?: string; id?: string }>();
@@ -43,6 +49,7 @@ export function GroupChatScreen() {
   const rideName = isDemoMode ? (chat?.rideName || 'Group chat') : remoteRideName;
 
   const myParticipant = participants.find((p: any) => p.id === activeUserId);
+  const isCreator = Boolean(myParticipant && String(myParticipant.rideStatus || myParticipant.role || '') === 'creator');
   // Use membershipStatus if available, else fallback to rideStatus
   const isExcluded = myParticipant && ['cancelled', 'removed', 'rejected', 'left', 'removed_passenger'].includes(myParticipant.membershipStatus || myParticipant.rideStatus);
   // Use backend ride status for read-only logic
@@ -55,6 +62,7 @@ export function GroupChatScreen() {
       setRemoteMessages([]);
       setRemoteRideName(chat?.rideName || 'Group chat');
       setRemoteRideStatus('active');
+      setRemoteRideId(chat?.rideId ? String(chat.rideId) : null);
       return;
     }
 
@@ -71,6 +79,7 @@ export function GroupChatScreen() {
         username: participant.username || 'user',
         avatar: participant.avatar_url ?? participant.avatar,
         rideStatus: participant.ride_status,
+        role: participant.role,
         membershipStatus: participant.membership_status, // backend may provide this
       }));
 
@@ -87,15 +96,17 @@ export function GroupChatScreen() {
       setRemoteMessages(normalizedMessages);
       setRemoteRideName(chat?.rideName || chatResponse?.chat?.title || `Ride Chat #${resolvedChatId}`);
       setRemoteRideStatus(chatResponse?.rideStatus || chatResponse?.ride_status || 'active');
+      setRemoteRideId(chatResponse?.chat?.ride_id ? String(chatResponse.chat.ride_id) : (chat?.rideId ? String(chat.rideId) : null));
     } catch {
       setRemoteParticipants([]);
       setRemoteMessages([]);
       setRemoteRideName(chat?.rideName || 'Group chat');
       setRemoteRideStatus('active');
+      setRemoteRideId(chat?.rideId ? String(chat.rideId) : null);
     } finally {
       setLoadingRemoteChat(false);
     }
-  }, [chat?.rideName, isDemoMode, resolvedChatId]);
+  }, [chat?.rideId, chat?.rideName, isDemoMode, resolvedChatId]);
 
   useEffect(() => {
     loadRemoteChat();
@@ -396,6 +407,19 @@ export function GroupChatScreen() {
                       >
                         <Ionicons name="ban-outline" size={13} color={isBlocked(participant.id) ? colors.brand : textSecondary} />
                       </Pressable>
+                      {!isDemoMode && isCreator && participant.rideStatus !== 'creator' ? (
+                        <Pressable
+                          onPress={() => {
+                            setShowParticipants(false);
+                            setRemovalTarget(participant);
+                            setShowRemoveModal(true);
+                          }}
+                          style={[styles.memberCallButton, { backgroundColor: '#DC2626' }]}
+                          accessibilityLabel={`Remove ${participant.name}`}
+                        >
+                          <Ionicons name="remove-circle-outline" size={15} color="#fff" />
+                        </Pressable>
+                      ) : null}
                     </View>
                   ) : null}
                 </View>
@@ -404,6 +428,42 @@ export function GroupChatScreen() {
           </View>
         </View>
       </Modal>
+
+      <RemoveAndReportModal
+        visible={showRemoveModal}
+        passenger={removalTarget ? { name: removalTarget.name } : null}
+        onClose={() => {
+          setShowRemoveModal(false);
+          setRemovalTarget(null);
+        }}
+        onConfirm={async (reason, reportReason) => {
+          if (!removalTarget) return;
+          if (removalLoading) return;
+
+          const rideIdToUse = remoteRideId || (chat?.rideId ? String(chat.rideId) : null);
+          if (!rideIdToUse) {
+            Alert.alert('Unable to remove', 'Could not determine ride id for this group chat.');
+            return;
+          }
+
+          setRemovalLoading(true);
+          try {
+            await ridesAPI.removePassenger(rideIdToUse, removalTarget.id, {
+              report: Boolean(reportReason),
+              reportReason: reportReason || undefined,
+              reportDetails: reason,
+            });
+
+            setShowRemoveModal(false);
+            setRemovalTarget(null);
+            await loadRemoteChat();
+          } catch (err: any) {
+            Alert.alert('Failed to remove', err?.message || 'Failed to remove participant.');
+          } finally {
+            setRemovalLoading(false);
+          }
+        }}
+      />
 
       <Modal visible={!!selectedMessage} transparent animationType="fade" onRequestClose={() => setSelectedMessage(null)}>
         <Pressable style={styles.menuOverlay} onPress={() => setSelectedMessage(null)}>

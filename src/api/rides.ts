@@ -181,4 +181,13 @@ export const ridesAPI = {
       throw new Error(handleApiError(error, 'Failed to remove passenger'));
     }
   },
+
+  sendPanicAlert: async (rideId: string | number) => {
+    try {
+      const response = await client.post(`/rides/${rideId}/panic`);
+      return response.data;
+    } catch (error) {
+      throw new Error(handleApiError(error, 'Failed to send panic alert'));
+    }
+  },
 };
