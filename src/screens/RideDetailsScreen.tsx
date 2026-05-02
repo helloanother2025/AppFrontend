@@ -75,7 +75,7 @@ export function RideDetailsScreen() {
   const isMyRide = ride && currentUser && String(ride.creator.id) === String(currentUser.id);
   const myReqForThisRide = myRequests.find((request) => String(request.rideId) === String(rideId));
   const passengers = incomingRequests.filter((request) => String(request.rideId) === String(rideId) && request.status === 'accepted');
-  const availableSeats = ride ? ride.seats - ride.currentPassengers : 0;
+  const availableSeats = ride ? Math.max(0, ride.seats - ride.currentPassengers) : 0;
   const totalCapacity = ride ? ride.seats + 1 : 1;
   const totalPeopleNow = ride ? ride.currentPassengers + 1 : 1;
   const isFull = availableSeats <= 0;

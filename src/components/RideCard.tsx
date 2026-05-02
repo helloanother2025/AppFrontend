@@ -36,7 +36,7 @@ export function RideCard({
   const statBg = darkMode ? '#111111' : '#F9F9F9';
   const statBorder = darkMode ? '#2A2A2A' : '#F0F0F0';
 
-  const availableSeats = ride.seats - ride.currentPassengers;
+  const availableSeats = Math.max(0, ride.seats - ride.currentPassengers);
   const totalCapacity = ride.seats + 1;
   const groupChat = groupChats.find((gc) => gc.rideId === ride.id);
 
