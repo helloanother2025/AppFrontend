@@ -81,4 +81,8 @@ export const joinRequestsAPI = {
     const response = await client.get(`/join-requests/status/${rideId}`);
     return response.data;
   },
+  sendReminder: async (requestId: string | number) => {
+    const response = await client.post(`/join-requests/${requestId}/remind`);
+    return response.data;
+  },
 };

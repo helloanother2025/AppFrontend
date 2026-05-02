@@ -25,6 +25,7 @@ import { formatRideDate } from '../utils/date';
 import { colors } from '../theme';
 import { ridesAPI } from '../api/rides';
 import { feedbackAPI } from '../api/feedback';
+import { joinRequestsAPI } from '../api/joinRequests';
 
 type Tab = 'created' | 'joined' | 'past';
 type CreatedFilter = 'all' | 'ongoing' | 'scheduled' | 'requests';
@@ -190,7 +191,7 @@ export function RideStatusScreen() {
 
   const filteredCreatedRides = useMemo(() => {
     return myRides.filter((ride) => {
-      if (ride.status === 'completed' || ride.status === 'cancelled') return false; // Past rides handled separately
+      if (ride.status === 'completed' || ride.status === 'cancelled') return false;
       if (!matchesScheduledSearch(ride.departureTime)) return false;
       if (createdFilter === 'requests') return (pendingRequestCountsByRide[String(ride.id)] || 0) > 0;
       if (createdFilter === 'ongoing') return ride.status === 'started';
@@ -312,7 +313,6 @@ export function RideStatusScreen() {
       if (params.rideId) {
         setExpandedRide(String(params.rideId));
       }
-      // Auto-open only unresolved requests. Accepted/rejected should not keep reopening.
       if (target.status === 'pending') {
         setSelectedJoinRequest(target);
       }
@@ -454,7 +454,23 @@ export function RideStatusScreen() {
     }
   };
 
+  const handleSendPanicAlert = async (rideId: string) => {
+    try {
+      await ridesAPI.sendPanicAlert(rideId);
+      Alert.alert('Panic alert sent', 'Other ride members have been notified.');
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to send panic alert');
+    }
+  };
 
+  const handleSendReminder = async (requestId: string) => {
+    try {
+      await joinRequestsAPI.sendReminder(Number(requestId));
+      Alert.alert('Success', 'Payment reminder sent to passenger.');
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Could not send reminder. Reminders are limited to once per day.');
+    }
+  };
 
   return (
     <ScreenShell scroll={false}>
@@ -590,8 +606,7 @@ export function RideStatusScreen() {
               const expanded = expandedRide === ride.id;
               const passengers = getPassengersForRide(ride.id);
               const pendingReqs = getPendingRequestsForRide(ride.id);
-              const isOpen = ride.status === 'unactive' || ride.status === 'started'; // Logic for backend
-
+              const isOpen = ride.status === 'unactive' || ride.status === 'started';
 
               return (
                 <View key={ride.id} style={[styles.card, { borderColor: cardBorder, backgroundColor: darkMode ? cardBg : cardStatusTone(ride.status) }]}> 
@@ -636,7 +651,6 @@ export function RideStatusScreen() {
                         {transportEmoji[ride.transport as TransportMode] || '🚗'} {ride.transport}
                       </Text>
                     </View>
-
                     <View style={[styles.statCell, styles.statCellBorder, { borderLeftColor: darkMode ? '#2A2A2A' : '#F3F4F6', borderRightColor: darkMode ? '#2A2A2A' : '#F3F4F6' }]}>
                       <Text style={styles.statLabel}>Fare</Text>
                       <Text style={[styles.statValue, { color: textPrimary }]}>{ride.fare != null ? `BDT ${ride.fare}` : 'TBD'}</Text>
@@ -646,7 +660,6 @@ export function RideStatusScreen() {
                       <Text style={[styles.statValue, { color: textPrimary }]}>{ride.genderPreference}</Text>
                     </View>
                   </View>
-
 
                   {expanded ? (
                     <View style={[styles.expandedArea, { borderTopColor: darkMode ? '#2A2A2A' : '#F3F4F6' }]}> 
@@ -662,8 +675,17 @@ export function RideStatusScreen() {
                             onPress={() => updateRideStatus(Number(ride.id), 'started')}
                           >
                             <Ionicons name="play-outline" size={13} color="#16A34A" />
-
                             <Text style={[styles.joinButtonText, { color: '#16A34A' }]}>Start Ride</Text>
+                          </Pressable>
+                        ) : null}
+
+                        {ride.status === 'started' ? (
+                          <Pressable 
+                            style={[styles.cancelRideButton, { backgroundColor: '#FEE2E2', borderColor: '#EF4444', marginBottom: 8 }]} 
+                            onPress={() => handleSendPanicAlert(ride.id)}
+                          >
+                            <Ionicons name="alert-circle-outline" size={13} color="#B91C1C" />
+                            <Text style={[styles.cancelRideText, { color: '#B91C1C' }]}>Panic Alert</Text>
                           </Pressable>
                         ) : null}
 
@@ -689,9 +711,7 @@ export function RideStatusScreen() {
                                   <Pressable onPress={() => router.push({ pathname: '/(app)/user/[id]', params: { id: request.requester.id } })}>
                                     <Text style={[styles.passengerName, { color: textPrimary }]}>{request.requester.name}</Text>
                                   </Pressable>
-                                  <View
-                                    style={payState === 'paid' ? styles.paymentPillPaid : styles.paymentPillPending}
-                                  >
+                                  <View style={payState === 'paid' ? styles.paymentPillPaid : styles.paymentPillPending}>
                                     <Ionicons name="card-outline" size={9} color={payState === 'paid' ? '#16A34A' : '#D97706'} />
                                     <Text style={[styles.paymentPillText, { color: payState === 'paid' ? '#16A34A' : '#D97706' }]}>
                                       {payState === 'paid' ? 'Paid' : 'Pending'}
@@ -705,6 +725,14 @@ export function RideStatusScreen() {
                                   {ride.status === 'unactive' ? (
                                     <Pressable style={styles.removeIconButton} onPress={() => promptRemovePassenger(ride.id, request)}>
                                       <Ionicons name="person-remove-outline" size={12} color="#DC2626" />
+                                    </Pressable>
+                                  ) : null}
+                                  {ride.status === 'completed' && payState !== 'paid' ? (
+                                    <Pressable 
+                                      style={styles.callIconButton} 
+                                      onPress={() => handleSendReminder(request.id)}
+                                    >
+                                      <Ionicons name="notifications-outline" size={12} color={colors.brand} />
                                     </Pressable>
                                   ) : null}
                                 </View>
@@ -735,7 +763,6 @@ export function RideStatusScreen() {
                                   {request.routePolyline ? 'Custom route included' : 'No custom route'}
                                 </Text>
                               </View>
-
                               <View style={styles.requestActions}>
                                 <Pressable style={styles.requestViewButton} onPress={() => setSelectedJoinRequest(request)}>
                                   <Ionicons name="eye-outline" size={12} color={colors.brand} />
@@ -799,7 +826,6 @@ export function RideStatusScreen() {
                       <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
                     </Pressable>
                   </View>
-
 
                   <View style={styles.joinedCreatorRow}>
                     <UserAvatar size="sm" name={request.ride?.creator?.name || 'Unknown'} source={request.ride?.creator?.avatar} />
