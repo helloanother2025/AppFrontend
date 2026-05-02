@@ -15,9 +15,12 @@ type MapRouteCardProps = {
   height?: number;
   onMetricsChange?: (metrics: RouteMetrics | null) => void;
   onMapPress?: (coordinate: { lat: number; lng: number }) => void;
+  overlayCoords?: Array<{ latitude: number; longitude: number }> | null;
+  overlayStrokeColor?: string;
+  overlayStrokeWidth?: number;
 };
 
-export function MapRouteCard({ from, to, title = 'Route', height = 200, onMetricsChange, onMapPress }: MapRouteCardProps) {
+export function MapRouteCard({ from, to, title = 'Route', height = 200, onMetricsChange, onMapPress, overlayCoords = null, overlayStrokeColor = '#10B981', overlayStrokeWidth = 4 }: MapRouteCardProps) {
   const { darkMode } = useAppContext();
   const mapRef = useRef<MapView | null>(null);
   const [coords, setCoords] = useState<Array<{ latitude: number; longitude: number }>>([]);
@@ -120,6 +123,9 @@ export function MapRouteCard({ from, to, title = 'Route', height = 200, onMetric
           <Marker coordinate={{ latitude: from.lat, longitude: from.lng }} title="Start" pinColor={colors.brand} />
           <Marker coordinate={{ latitude: to.lat, longitude: to.lng }} title="Destination" pinColor="#2563EB" />
           {coords.length > 0 ? <Polyline coordinates={coords} strokeWidth={5} strokeColor={darkMode ? '#F87171' : colors.brand} /> : null}
+          {overlayCoords && overlayCoords.length > 0 ? (
+            <Polyline coordinates={overlayCoords} strokeWidth={overlayStrokeWidth} strokeColor={overlayStrokeColor} lineDashPattern={[6,4]} />
+          ) : null}
         </MapView>
 
         {loading ? (

@@ -3,7 +3,7 @@
 import { useCallback } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { router } from 'expo-router';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { ScreenShell } from '../components/ScreenShell';
@@ -58,7 +58,7 @@ export function ProfileScreen() {
     notificationPreferences,
     updateNotificationPreferences,
   } = useAppContext();
-  const { user, logout } = useUser();
+  const { user, logout, refreshUser } = useUser();
   const liveUser = user ?? currentUser;
   const rideStatsUser = liveUser as any;
   const rating = liveUser.rating ?? 0;
@@ -228,8 +228,22 @@ export function ProfileScreen() {
     setShowAvatarOptions(false);
   };
 
-  const handleSave = () => {
-    setEditing(false);
+  const handleSave = async () => {
+    if (isDemoMode) {
+      setEditing(false);
+      return;
+    }
+
+    try {
+      await usersAPI.updateProfile({ bio, phone });
+      if (typeof refreshUser === 'function') await refreshUser();
+      Alert.alert('Success', 'Profile updated successfully');
+    } catch (err) {
+      console.error('Failed to save profile', err);
+      Alert.alert('Error', 'Failed to save profile. Please try again.');
+    } finally {
+      setEditing(false);
+    }
   };
 
   const infoRows = [

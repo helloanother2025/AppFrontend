@@ -350,7 +350,29 @@ export function RideDetailsScreen() {
             </View>
           </View>
 
-          <MapRouteCard from={ride.from} to={ride.to} title="Ride route" onMetricsChange={setRouteMetrics} />
+          <MapRouteCard
+            from={ride.from}
+            to={ride.to}
+            title="Ride route"
+            onMetricsChange={setRouteMetrics}
+            overlayCoords={(() => {
+              // If user already submitted a request with a route, show it; otherwise if user chose their own search route, show that
+              if (myReqForThisRide?.routePolyline) {
+                try {
+                  return getParsedRouteCoords(myReqForThisRide.routePolyline, { latitude: requestStart.lat, longitude: requestStart.lng }, { latitude: requestEnd.lat, longitude: requestEnd.lng });
+                } catch { /* ignore */ }
+              }
+              if (hasExplicitUserRoute) {
+                return [
+                  { latitude: requestStart.lat, longitude: requestStart.lng },
+                  { latitude: requestEnd.lat, longitude: requestEnd.lng },
+                ];
+              }
+              return null;
+            })()}
+            overlayStrokeColor={darkMode ? '#60A5FA' : '#06B6D4'}
+            overlayStrokeWidth={4}
+          />
 
           <View style={styles.mapLegendRow}>
             <View style={styles.fromLegendDot} />
